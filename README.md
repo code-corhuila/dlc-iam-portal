@@ -1,35 +1,20 @@
-\# dlc-iam-portal
+# DLC IAM Portal
 
+Esqueleto de `dlc-iam-portal`, adaptado de la estructura Angular del Anexo H.
 
+## Estado
 
-> iam bounded context: web UI (remote)
+Los archivos de `src/app/iam/`, `src/main.ts`, `src/bootstrap.ts`, `src/index.html`, `federation.config.js` y `deploy/` están vacíos intencionalmente. Solo reservan la ubicación donde se implementará el portal. No hay pantallas, autenticación, MFA, llamadas al API ni integración funcional con el contenedor.
 
+Las configuraciones de Angular, TypeScript y npm están presentes como base del proyecto. El proyecto no compila todavía porque los archivos fuente están vacíos; el flujo CI comenzará a pasar cuando se implemente el arranque mínimo.
 
+## Responsabilidades futuras
 
-Part of the \*\*LMS Library\*\* distributed system — team `lms-library`, Grupo 2. Governance and documentation live in \[`library-docs`](https://github.com/code-corhuila/library-docs).
+- `src/app/iam/components/`: formularios de acceso y MFA.
+- `src/app/iam/data/`: consumo del API IAM mediante el `HttpClient` provisto por el contenedor.
+- `src/app/iam/model/`: tipos derivados del contrato OpenAPI de IAM.
+- `src/app/iam/pages/`: páginas del dominio IAM.
+- `src/app/iam/iam.routes.ts`: rutas que se expondrán por Native Federation.
+- `src/app/shell-contract.ts`: contrato de integración con el contenedor.
 
-
-
-\## Branching
-
-
-
-Three permanent branches. \*\*None of them accepts a direct commit\*\* — you enter through a child branch and leave through a Pull Request.
-develop  <--PR--  feat/... fix/... chore/...
-
-qa       <--PR--  qa/...
-
-main     <--PR--  release/...  hotfix/...
-
-
-
-Promotion happens \*\*by re-application\*\* (`git cherry-pick -x`), never by merging one permanent branch into another: `merge develop -> qa` and `merge qa -> main` do not exist in this model.
-
-
-
-`main` requires \*\*1 approval from `ariel5253`\*\*. On `develop` and `qa` the team sets its own review rule.
-
-
-
-Full policy: `00-governance/branching-policy.md` in `library-docs`.
-
+El contenedor seguirá siendo dueño de la sesión, el cliente HTTP y la URL del gateway. Al trasladar este esqueleto al repositorio real, se conservan `CODEOWNERS` y `env-tracking.yml` provistos por el docente.
