@@ -6,7 +6,7 @@ on:
 permissions:
   contents: read
 jobs:
-  build-and-test:
+  skeleton-structure:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -14,6 +14,4 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-          cache: npm
-      - run: npm ci
-      - run: npm run build
+      - run: npm run check:skeleton
