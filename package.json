@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "check:skeleton": "node scripts/check-skeleton.mjs",
     "build": "ng build",
     "start": "ng serve"
   },
