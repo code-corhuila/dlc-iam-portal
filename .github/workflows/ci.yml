@@ -18,3 +18,4 @@ jobs:
       - run: npm ci
       - run: npm test
       - run: npx ng run dlc-iam-portal:build-original:production
+      - run: if grep -R -q -E 'StrongPass1|staff@example.test' dist/dlc-iam-portal/browser; then echo "Fake login found in production bundle"; exit 1; fi

@@ -33,7 +33,7 @@
             "styles": []
           },
           "configurations": {
-            "production": { "outputHashing": "all" },
+            "production": { "browser": "src/main.production.ts", "outputHashing": "all" },
             "development": { "optimization": false, "sourceMap": true }
           },
           "defaultConfiguration": "production"
