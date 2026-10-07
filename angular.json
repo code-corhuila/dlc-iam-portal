@@ -11,26 +11,16 @@
       "architect": {
         "build": {
           "builder": "@angular-architects/native-federation:build",
-          "options": {
-            "target": "dlc-iam-portal:build-original:production"
-          },
+          "options": { "target": "dlc-iam-portal:build-original:production" },
           "configurations": {
-            "production": {
-              "target": "dlc-iam-portal:build-original:production"
-            },
-            "development": {
-              "target": "dlc-iam-portal:build-original:development",
-              "dev": true
-            }
+            "production": { "target": "dlc-iam-portal:build-original:production" },
+            "development": { "target": "dlc-iam-portal:build-original:development", "dev": true }
           },
           "defaultConfiguration": "production"
         },
         "serve": {
           "builder": "@angular-architects/native-federation:build",
-          "options": {
-            "target": "dlc-iam-portal:serve-original:development",
-            "dev": true
-          }
+          "options": { "target": "dlc-iam-portal:serve-original:development", "dev": true }
         },
         "build-original": {
           "builder": "@angular/build:application",
@@ -39,31 +29,18 @@
             "index": "src/index.html",
             "browser": "src/main.ts",
             "tsConfig": "tsconfig.app.json",
-            "assets": [
-              {
-                "glob": "**/*",
-                "input": "public"
-              }
-            ],
+            "assets": [{ "glob": "**/*", "input": "public" }],
             "styles": []
           },
           "configurations": {
-            "production": {
-              "outputHashing": "all"
-            },
-            "development": {
-              "optimization": false,
-              "sourceMap": true
-            }
+            "production": { "outputHashing": "all" },
+            "development": { "optimization": false, "sourceMap": true }
           },
           "defaultConfiguration": "production"
         },
         "serve-original": {
           "builder": "@angular/build:dev-server",
-          "options": {
-            "buildTarget": "dlc-iam-portal:build-original:development",
-            "port": 4201
-          }
+          "options": { "buildTarget": "dlc-iam-portal:build-original:development", "port": 4201 }
         },
         "test": {
           "builder": "@angular/build:unit-test",

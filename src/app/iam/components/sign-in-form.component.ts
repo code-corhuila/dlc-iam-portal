@@ -27,7 +27,7 @@ import { MfaChallenge } from '../model/auth';
         required
       />
 
-      <button type="submit">Iniciar sesión</button>
+      <button type="submit" [disabled]="loading">Iniciar sesión</button>
 
       @if (errorMessage) {
         <p role="alert">{{ errorMessage }}</p>
@@ -43,14 +43,19 @@ export class SignInFormComponent {
     email = '';
     password = '';
     errorMessage = '';
+    loading = false;
 
     submit(event: Event): void {
         event.preventDefault();
+        if (this.loading) return;
+
+        this.loading = true;
         this.errorMessage = '';
 
         this.api.login({ email: this.email, password: this.password }).subscribe({
             next: (challenge) => this.challenge.emit(challenge),
             error: () => {
+                this.loading = false;
                 this.errorMessage = 'No se pudo completar la autenticación.';
             },
         });
