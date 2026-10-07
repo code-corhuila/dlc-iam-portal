@@ -1,7 +1,7 @@
 /// <reference types="vitest/globals" />
 import { HttpErrorResponse } from '@angular/common/http';
 import { TestBed } from '@angular/core/testing';
-import { of, throwError } from 'rxjs';
+import { Subject, of, throwError } from 'rxjs';
 import { IamApiService } from '../data/iam-api.service';
 import { SignInFormComponent } from './sign-in-form.component';
 
@@ -89,5 +89,33 @@ describe('SignInFormComponent', () => {
     });
     expect(challengeReceived).toHaveBeenCalledTimes(1);
     expect(challengeReceived).toHaveBeenCalledWith(challenge);
+  });
+    it('ignores a second submit while login is pending', async () => {
+    const pending = new Subject();
+    const api = { login: vi.fn().mockReturnValue(pending.asObservable()) };
+
+    await TestBed.configureTestingModule({
+      imports: [SignInFormComponent],
+      providers: [{ provide: IamApiService, useValue: api }],
+    }).compileComponents();
+
+    const fixture = TestBed.createComponent(SignInFormComponent);
+    fixture.componentInstance.email = 'staff@example.test';
+    fixture.componentInstance.password = 'StrongPass1';
+    fixture.detectChanges();
+
+    const host = fixture.nativeElement as HTMLElement;
+    const form = host.querySelector('form');
+    const button = host.querySelector<HTMLButtonElement>('button[type="submit"]');
+    if (!form || !button) throw new Error('Sign-in form is missing');
+
+    const submit = () =>
+      form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    submit();
+    submit();
+    fixture.detectChanges();
+
+    expect(api.login).toHaveBeenCalledTimes(1);
+    expect(button.disabled).toBe(true);
   });
 });

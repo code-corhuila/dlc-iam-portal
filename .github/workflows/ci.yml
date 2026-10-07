@@ -15,3 +15,6 @@ jobs:
         with:
           node-version: '22'
       - run: npm run check:skeleton
+      - run: npm ci
+      - run: npm test
+      - run: npx ng run dlc-iam-portal:build-original:production
