@@ -4,8 +4,32 @@
   <meta charset="utf-8">
   <title>Di Lucca IAM</title>
   <base href="/">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
 </head>
 <body>
-  <dlc-iam-page></dlc-iam-page>
+  <!-- Standalone preview only; dlc-front owns shared chrome in integration. -->
+  <div class="preview-shell">
+    <header class="preview-header">
+      <div class="preview-brand">
+        <span class="preview-mark" aria-hidden="true"></span>
+        <strong>DI LUCCA</strong>
+      </div>
+      <div class="preview-nav" aria-hidden="true">
+        <span>Citas</span><span>Servicios</span><span>Contacto</span>
+      </div>
+      <span class="preview-login" aria-hidden="true">Login</span>
+    </header>
+
+    <main class="preview-main">
+      <dlc-iam-page></dlc-iam-page>
+    </main>
+
+    <footer class="preview-footer">
+      <p><strong>DI LUCCA</strong> <span>© 2026 DI LUCCA. Todos los derechos reservados.</span></p>
+      <div class="preview-legal" aria-hidden="true">
+        <span>Privacidad</span><span>Términos</span><span>Cookies</span>
+      </div>
+    </footer>
+  </div>
 </body>
 </html>
