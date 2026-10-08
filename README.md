@@ -1,32 +1,35 @@
 # DLC IAM Portal
 
-Esqueleto de `dlc-iam-portal`, adaptado de la estructura Angular del Anexo H.
+Angular 21 standalone preview for HU-IAM-001, based on the project scaffold.
 
-## Estado
+## Current state
 
-Los archivos de `src/`, `federation.config.js` y `deploy/` están vacíos intencionalmente. Solo reservan la ubicación donde se implementará el portal. No hay pantallas, autenticación, MFA, llamadas al API ni integración funcional con el contenedor.
+The portal shows a basic sign-in form and an MFA-pending state. `FakeIamApiService` accepts `staff@example.test` / `StrongPass1` and rejects other credentials; the UI displays a generic error. No backend or session is required. MFA completion and the Figma desktop layout remain pending. Brand assets will be added with the Figma layout.
 
-Las configuraciones de Angular, TypeScript y npm están presentes como base del proyecto. El proyecto no compila todavía porque los archivos fuente están vacíos. La CI ejecuta `npm run check:skeleton`: verifica la presencia de archivos y la coherencia básica de las configuraciones, sin instalar dependencias, compilar ni ejecutar pruebas funcionales. Al implementar el arranque mínimo, se debe añadir `npm ci` y `npm run build` a la CI; las pruebas se incorporarán junto con el comportamiento que validen.
+CI runs `npm run check:skeleton`, `npm test`, and `npx ng run dlc-iam-portal:build-original:production`. The production entry deliberately blocks startup; the unit tests cover the development preview. Native Federation remains unverified. `federation.config.js` and the files in `deploy/` remain empty.
 
-## Verificación local
+## Local verification
 
 ```bash
 npm run check:skeleton
+npm test
+npx ng run dlc-iam-portal:build-original:production
+npx ng run dlc-iam-portal:serve-original
 ```
 
-El resultado de esta comprobación solo acredita la estructura del esqueleto. No demuestra que Angular, Native Federation o el despliegue funcionen.
+These checks do not validate Native Federation, the Gateway, or the complete MFA and session flow.
 
-## Responsabilidades futuras
+## Future responsibilities
 
-- `src/app/iam/components/`: formularios de acceso y MFA.
-- `src/app/iam/data/`: consumo del API IAM mediante el `HttpClient` provisto por el contenedor.
-- `src/app/iam/model/`: tipos derivados del contrato OpenAPI de IAM.
-- `src/app/iam/pages/`: páginas del dominio IAM.
-- `src/app/iam/iam.routes.ts`: rutas que se expondrán por Native Federation.
-- `src/app/shell-contract.ts`: contrato de integración con el contenedor.
+- `src/app/iam/components/`: sign-in and MFA forms.
+- `src/app/iam/data/`: login port and temporary fake adapter. A future HTTP adapter must use the shared client from `dlc-front` and validate Gateway responses.
+- `src/app/iam/model/`: types based on the IAM OpenAPI contract.
+- `src/app/iam/pages/`: IAM pages.
+- `src/app/iam/iam.routes.ts`: routes to expose through Native Federation.
+- `src/app/shell-contract.ts`: integration contract with the shell.
 
-El contenedor seguirá siendo dueño de la sesión, el cliente HTTP y la URL del gateway. El archivo `.github/CODEOWNERS` ya existe en la rama base y se conserva.
+`dlc-front` will own the session, shared HTTP client, and Gateway URL. The portal does not create or store sessions. `.github/CODEOWNERS` already existed on the base branch and was retained.
 
-## Gobernanza
+## Governance
 
-Las reglas de ramas, revisiones y promoción están en la [política de ramas de Di Lucca](https://github.com/code-corhuila/ods-docs/blob/main/00-governance/branching-policy.md).
+Branching, review, and promotion rules are in the [Di Lucca branching policy](https://github.com/code-corhuila/ods-docs/blob/main/00-governance/branching-policy.md).
