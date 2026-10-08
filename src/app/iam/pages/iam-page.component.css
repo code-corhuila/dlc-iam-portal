@@ -15,7 +15,49 @@
     url('/auth-clinic-background.png') center / cover no-repeat;
 }
 
-dlc-sign-in-form {
+dlc-sign-in-form,
+.mfa-state {
   display: block;
   width: min(100%, 344px);
+}
+
+.mfa-state {
+  box-sizing: border-box;
+  padding: 34px 30px 30px;
+  border: 1px solid rgba(226, 232, 238, .9);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, .96);
+  box-shadow: 0 14px 30px rgba(17, 57, 70, .17);
+  color: #1f2933;
+  font-family: Inter, system-ui, sans-serif;
+  text-align: center;
+}
+
+.mfa-state h1 {
+  margin: 12px 0 6px;
+  color: #20a99a;
+  font-size: 24px;
+  line-height: 1.25;
+}
+
+.mfa-state p {
+  margin: 0 0 24px;
+  color: #35616a;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.mfa-state button {
+  width: 100%;
+  height: 40px;
+  border: 0;
+  border-radius: 6px;
+  background: #20a99a;
+  color: #fff;
+  cursor: pointer;
+  font: 600 13px Inter, system-ui, sans-serif;
+}
+
+.mfa-state button:hover {
+  background: #168e82;
 }
