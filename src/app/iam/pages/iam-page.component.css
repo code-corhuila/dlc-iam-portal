@@ -1,0 +1,21 @@
+:host {
+  display: block;
+  min-height: 100%;
+}
+
+.iam-auth-surface {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  min-height: 480px;
+  height: 100%;
+  padding: 48px clamp(32px, 8vw, 128px);
+  background:
+    linear-gradient(90deg, rgba(245, 252, 253, .2), transparent 65%),
+    url('/auth-clinic-background.png') center / cover no-repeat;
+}
+
+dlc-sign-in-form {
+  display: block;
+  width: min(100%, 344px);
+}
