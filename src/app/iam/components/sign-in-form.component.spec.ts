@@ -28,6 +28,12 @@ describe('SignInFormComponent', () => {
     return { fixture, host, form };
   }
 
+  it('presents a staff sign-in heading', async () => {
+    const { host } = await renderForm({ login: vi.fn() });
+    expect(host.querySelector('h1')).not.toBeNull();
+    expect(host.textContent).not.toContain('gestionar tus citas');
+  });
+
   it.each([
     'Invalid credentials',
     'Account locked',
@@ -77,6 +83,7 @@ describe('SignInFormComponent', () => {
     const pending = new Subject();
     const api = { login: vi.fn().mockReturnValue(pending.asObservable()) };
     const { fixture, host, form } = await renderForm(api);
+
     const button = host.querySelector<HTMLButtonElement>('button[type="submit"]');
     if (!button) throw new Error('Submit button is missing');
 
