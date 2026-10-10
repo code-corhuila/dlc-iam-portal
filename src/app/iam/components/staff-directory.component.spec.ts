@@ -5,10 +5,10 @@ import { StaffDirectoryComponent } from './staff-directory.component';
 
 describe('StaffDirectoryComponent', () => {
   async function render(list: ReturnType<typeof vi.fn>, read = vi.fn(),
-    updateName = vi.fn(), disable = vi.fn()) {
+    updateName = vi.fn(), disable = vi.fn(), enable = vi.fn()) {
     await TestBed.configureTestingModule({
       imports: [StaffDirectoryComponent],
-      providers: [{ provide: StaffDirectoryService, useValue: { list, read, updateName, disable } }],
+      providers: [{ provide: StaffDirectoryService, useValue: { list, read, updateName, disable, enable } }],
     }).compileComponents();
     const fixture = TestBed.createComponent(StaffDirectoryComponent);
     fixture.detectChanges();
@@ -172,6 +172,43 @@ describe('StaffDirectoryComponent', () => {
     host.querySelector<HTMLButtonElement>('section.directory > button')?.click();
     fixture.detectChanges();
     expect(host.querySelector('li')?.textContent).toContain('Deshabilitado');
+  });
+
+  it('updates the detail and list when Auth enables an unverified member', async () => {
+    const member = {
+      id: 'a3f80675-6c3d-4f10-8d78-60ed82da53a7',
+      name: 'Ana', email: 'ana@example.test', roles: ['DENTIST'],
+      status: 'DISABLED', version: 2,
+    };
+    const page = { data: [member], meta: { page: 1, limit: 20, total: 1, totalPages: 1 } };
+    const pending = { ...member, status: 'PENDING_VERIFICATION', version: 3 };
+    const enable = vi.fn().mockResolvedValue({ kind: 'enabled', staff: pending });
+    const { fixture, host } = await render(
+      vi.fn().mockResolvedValue({ kind: 'loaded', page }),
+      vi.fn().mockResolvedValue({ kind: 'loaded', staff: member }), vi.fn(), vi.fn(), enable,
+    );
+    host.querySelector<HTMLButtonElement>('li button')?.click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const enableButton = [...host.querySelectorAll<HTMLButtonElement>('button')]
+      .find((button) => button.textContent?.includes('Habilitar personal'));
+    enableButton?.click();
+    fixture.detectChanges();
+    const form = host.querySelector('dlc-staff-enable form');
+    const reason = form?.querySelector<HTMLTextAreaElement>('textarea[name="reason"]');
+    if (!form || !reason) throw new Error('Enabling form is missing');
+    reason.value = 'Reingreso aprobado';
+    form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(enable).toHaveBeenCalledWith(expect.objectContaining({ id: member.id }),
+      'Reingreso aprobado', expect.any(String));
+    expect(host.querySelector('dlc-staff-enable')).toBeNull();
+    expect(host.querySelector('section[aria-label="Detalle de personal"]')?.textContent)
+      .toContain('Pendiente de verificación');
+    host.querySelector<HTMLButtonElement>('section.directory > button')?.click();
+    fixture.detectChanges();
+    expect(host.querySelector('li')?.textContent).toContain('Pendiente de verificación');
   });
 
   it('does not show a detail that arrives after returning to the list', async () => {
