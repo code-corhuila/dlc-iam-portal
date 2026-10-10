@@ -122,6 +122,48 @@ describe('StaffDirectoryService', () => {
   };
   const key = '11111111-1111-4111-8111-111111111111';
 
+  it.each(['ACTIVE', 'PENDING_VERIFICATION'] as const)(
+    'enables disabled staff into %s through shell HTTP', async (status) => {
+      const { directory, request, controller } = setup();
+      const disabled = { ...staff, status: 'DISABLED' as const };
+      const enabled = { ...staff, status, version: 2 };
+      request.mockResolvedValue({ ok: true, status: 200, data: enabled });
+      expect(await directory.enable(disabled, '  Reingreso aprobado  ', key))
+        .toEqual({ kind: 'enabled', staff: enabled });
+      expect(request).toHaveBeenCalledWith({
+        method: 'POST', path: `/api/v1/auth/staff/${staff.id}/enablings`,
+        body: { reason: 'Reingreso aprobado', expectedVersion: 1 },
+        headers: { 'Idempotency-Key': key }, signal: controller.signal,
+      });
+    },
+  );
+
+  it('rejects invalid enabling and private, stale or mismatched Auth responses', async () => {
+    const { directory, request } = setup();
+    const disabled = { ...staff, status: 'DISABLED' as const };
+    expect(await directory.enable(disabled, ' ', key)).toEqual({ kind: 'invalid' });
+    expect(await directory.enable(disabled, 'Reingreso', 'bad-key')).toEqual({ kind: 'invalid' });
+    expect(request).not.toHaveBeenCalled();
+    request.mockResolvedValueOnce({ ok: true, status: 200,
+      data: { ...staff, version: 2, passwordHash: 'secret' } });
+    request.mockResolvedValueOnce({ ok: true, status: 200, data: staff });
+    request.mockResolvedValueOnce({ ok: true, status: 200,
+      data: { ...staff, id: key, version: 2 } });
+    expect(await directory.enable(disabled, 'Reingreso', key)).toEqual({ kind: 'unavailable' });
+    expect(await directory.enable(disabled, 'Reingreso', key)).toEqual({ kind: 'unavailable' });
+    expect(await directory.enable(disabled, 'Reingreso', key)).toEqual({ kind: 'unavailable' });
+  });
+
+  it.each([
+    [400, 'invalid'], [401, 'session-expired'], [403, 'forbidden'],
+    [404, 'not-found'], [409, 'conflict'], [503, 'unavailable'],
+  ])('maps enabling HTTP %i to %s', async (status, kind) => {
+    const { directory, request } = setup();
+    request.mockResolvedValue({ ok: false, status });
+    expect(await directory.enable({ ...staff, status: 'DISABLED' }, 'Reingreso', key))
+      .toEqual({ kind });
+  });
+
   it('disables a versioned staff record through shell HTTP with a reason and retry key', async () => {
     const { directory, request, controller } = setup();
     const disabled = { ...staff, status: 'DISABLED', version: 2 };
