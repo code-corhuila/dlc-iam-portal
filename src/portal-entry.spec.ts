@@ -70,6 +70,11 @@ describe('IAM portal entry', () => {
     backButton.click();
     expect(context.navigation.request).toHaveBeenCalledWith({ path: '/login' });
 
+    await handle.updateRoute({
+      ...route, globalPath: '/app/administration', basePath: '/app/administration',
+    });
+    expect(host.querySelector('dlc-staff-directory')).not.toBeNull();
+
     await handle.updateRoute({ ...route, localPath: '/unknown' });
     expect(host.textContent).toContain('Página no encontrada');
 
