@@ -48,7 +48,8 @@ describe('StaffDisableComponent', () => {
 
   it('reuses the key on an unchanged retry and blocks a version conflict', async () => {
     const disable = vi.fn().mockResolvedValueOnce({ kind: 'unavailable' })
-      .mockResolvedValueOnce({ kind: 'conflict' });
+      .mockResolvedValueOnce({ kind: 'conflict' })
+      .mockResolvedValueOnce({ kind: 'unavailable' });
     const { fixture, host, submit } = await render(disable);
     submit();
     await fixture.whenStable();
@@ -63,5 +64,25 @@ describe('StaffDisableComponent', () => {
     fixture.componentInstance.refresh.subscribe(refresh);
     host.querySelectorAll<HTMLButtonElement>('button[type="button"]')[1].click();
     expect(refresh).toHaveBeenCalledTimes(1);
+    fixture.componentRef.setInput('member', { ...member, version: 4 });
+    fixture.detectChanges();
+    submit();
+    await fixture.whenStable();
+    expect(disable.mock.calls[2][0].version).toBe(4);
+    expect(disable.mock.calls[2][2]).not.toBe(disable.mock.calls[1][2]);
+  });
+
+  it.each([
+    ['invalid', 'motivo válido'],
+    ['forbidden', 'No tienes permiso'],
+    ['session-expired', 'La sesión terminó'],
+    ['not-found', 'no está disponible'],
+    ['unavailable', 'Puedes reintentar'],
+  ])('shows the %s response', async (kind, message) => {
+    const { fixture, host, submit } = await render(vi.fn().mockResolvedValue({ kind }));
+    submit();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(host.querySelector('[role="alert"]')?.textContent).toContain(message);
   });
 });
