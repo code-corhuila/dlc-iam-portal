@@ -53,11 +53,14 @@ describe('StaffDisableComponent', () => {
     const { fixture, host, submit } = await render(disable);
     submit();
     await fixture.whenStable();
+    fixture.detectChanges();
+    expect(host.querySelector<HTMLButtonElement>('button[type="submit"]')?.disabled).toBe(false);
     submit();
     await fixture.whenStable();
     fixture.detectChanges();
     expect(disable.mock.calls[1][2]).toBe(disable.mock.calls[0][2]);
     expect(host.querySelector('[role="alert"]')?.textContent).toContain('cambió');
+    expect(host.querySelector<HTMLTextAreaElement>('textarea[name="reason"]')?.disabled).toBe(false);
     submit();
     expect(disable).toHaveBeenCalledTimes(2);
     const refresh = vi.fn();

@@ -12,7 +12,7 @@ import type { Staff } from '../model/staff';
       <p>Esta acción revoca sus sesiones. Auth confirma y registra la operación.</p>
       <label>Motivo
         <textarea name="reason" required maxlength="1000" rows="3"
-          [disabled]="submitBlocked()"></textarea>
+          [disabled]="state() === 'saving' || terminalResponse()"></textarea>
       </label>
       <div class="actions">
         <button type="submit" [disabled]="submitBlocked()">
@@ -48,9 +48,10 @@ export class StaffDisableComponent implements OnChanges {
   readonly refresh = output<void>();
   readonly state = signal<'editing' | 'saving' | 'invalid' | 'conflict' | 'forbidden' |
     'session-expired' | 'not-found' | 'error'>('editing');
-  readonly submitBlocked = computed(() =>
-    this.state() === 'saving' || this.state() === 'conflict' || this.state() === 'forbidden' ||
+  readonly terminalResponse = computed(() => this.state() === 'forbidden' ||
     this.state() === 'session-expired' || this.state() === 'not-found');
+  readonly submitBlocked = computed(() =>
+    this.state() === 'saving' || this.state() === 'conflict' || this.terminalResponse());
   private idempotencyKey: string | null = null;
 
   ngOnChanges(changes: SimpleChanges): void {
