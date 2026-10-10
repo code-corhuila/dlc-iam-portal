@@ -1,4 +1,5 @@
-import { Component, EventEmitter, Output, inject } from '@angular/core';
+import { Component, EventEmitter, Output, inject, DestroyRef } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { IamApiService } from '../data/iam-api.service';
 import { MfaChallenge } from '../model/auth';
 
@@ -40,6 +41,7 @@ import { MfaChallenge } from '../model/auth';
 })
 export class SignInFormComponent {
   private readonly api = inject(IamApiService);
+  private readonly destroyRef = inject(DestroyRef);
 
   @Output() readonly challenge = new EventEmitter<MfaChallenge>();
 
@@ -55,12 +57,14 @@ export class SignInFormComponent {
     this.loading = true;
     this.errorMessage = '';
 
-    this.api.login({ email: this.email, password: this.password }).subscribe({
-      next: (challenge) => this.challenge.emit(challenge),
-      error: () => {
-        this.loading = false;
-        this.errorMessage = 'No se pudo completar la autenticación.';
-      },
-    });
+    this.api.login({ email: this.email, password: this.password })
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (challenge) => this.challenge.emit(challenge),
+        error: () => {
+          this.loading = false;
+          this.errorMessage = 'No se pudo completar la autenticación.';
+        },
+      });
   }
 }
