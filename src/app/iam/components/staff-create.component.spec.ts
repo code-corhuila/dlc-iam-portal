@@ -4,7 +4,7 @@ import { StaffDirectoryService } from '../data/staff-directory.service';
 import { StaffCreateComponent } from './staff-create.component';
 
 describe('StaffCreateComponent', () => {
-  async function render(create: ReturnType<typeof vi.fn>) {
+  async function render(create: ReturnType<typeof vi.fn>, role: 'DENTIST' | null = 'DENTIST') {
     await TestBed.configureTestingModule({
       imports: [StaffCreateComponent],
       providers: [{ provide: StaffDirectoryService, useValue: { create } }],
@@ -21,9 +21,23 @@ describe('StaffCreateComponent', () => {
       if (!input) throw new Error(`${name} input is missing`);
       input.value = value;
     }
+    if (role) {
+      const select = form.querySelector<HTMLSelectElement>('select[name="role"]');
+      if (!select) throw new Error('Role selector is missing');
+      select.value = role;
+    }
     const submit = () => form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
     return { fixture, host, form, submit };
   }
+
+  it('requires an explicit role selection before creating staff', async () => {
+    const create = vi.fn();
+    const { form, submit } = await render(create, null);
+    expect(form.querySelector<HTMLSelectElement>('select[name="role"]')?.value).toBe('');
+    expect(form.checkValidity()).toBe(false);
+    submit();
+    expect(create).not.toHaveBeenCalled();
+  });
 
   it('submits the permitted role and hides the password after creation', async () => {
     const create = vi.fn().mockResolvedValue({ kind: 'created', staff: { id: 'created' } });
@@ -34,7 +48,7 @@ describe('StaffCreateComponent', () => {
 
     expect(create).toHaveBeenCalledWith({
       name: 'Ana Pérez', email: 'ana@example.test', password: 'StrongPass1', role: 'DENTIST',
-    }, expect.stringMatching(/^[0-9a-f-]{36}$/i));
+    }, expect.stringMatching(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i));
     expect(host.querySelector('[role="status"]')).not.toBeNull();
     expect(host.querySelector('input[type="password"]')).toBeNull();
   });

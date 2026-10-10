@@ -28,6 +28,7 @@ import { StaffDirectoryService, type StaffCreateInput } from '../data/staff-dire
           <p class="hint">Mínimo ocho caracteres, una mayúscula y un número; máximo 72 bytes.</p>
           <label>Rol
             <select name="role" required [disabled]="state() === 'loading'">
+              <option value="" disabled selected>Selecciona un rol</option>
               <option value="DENTIST">Odontólogo</option>
               <option value="SECRETARY_ASSISTANT">Secretaría o asistencia</option>
             </select>
@@ -71,6 +72,7 @@ export class StaffCreateComponent {
     event.preventDefault();
     if (this.state() === 'loading') return;
     const form = event.currentTarget as HTMLFormElement;
+    if (!form.checkValidity()) return;
     const values = new FormData(form);
     const input: StaffCreateInput = {
       name: String(values.get('name') ?? '').trim(),

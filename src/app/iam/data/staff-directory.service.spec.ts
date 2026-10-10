@@ -104,6 +104,17 @@ describe('StaffDirectoryService', () => {
     });
   });
 
+  it('trims the staff name before sending it to Auth', async () => {
+    const { directory, request } = setup();
+    request.mockResolvedValue({ ok: true, status: 201, data: {
+      ...staff, email: createInput.email, name: createInput.name,
+      status: 'PENDING_VERIFICATION',
+    } });
+    expect((await directory.create({ ...createInput, name: `  ${createInput.name}  ` }, key)).kind)
+      .toBe('created');
+    expect(request).toHaveBeenCalledWith(expect.objectContaining({ body: createInput }));
+  });
+
   it('rejects administrator creation and passwords over 72 UTF-8 bytes before HTTP', async () => {
     const { directory, request } = setup();
     expect(await directory.create({ ...createInput, role: 'ADMINISTRATOR' as never }, key))
