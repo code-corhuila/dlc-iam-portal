@@ -10,6 +10,17 @@ export type StaffReadResult =
   | { readonly kind: 'loaded'; readonly staff: Staff }
   | { readonly kind: 'forbidden' | 'not-found' | 'session-expired' | 'unavailable' };
 
+export interface StaffCreateInput {
+  readonly email: string;
+  readonly password: string;
+  readonly name: string;
+  readonly role: 'DENTIST' | 'SECRETARY_ASSISTANT';
+}
+
+export type StaffCreateResult =
+  | { readonly kind: 'created'; readonly staff: Staff }
+  | { readonly kind: 'invalid' | 'conflict' | 'forbidden' | 'session-expired' | 'unavailable' };
+
 function record(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
@@ -49,6 +60,38 @@ function isStaffPage(value: unknown): value is StaffPage {
 @Injectable()
 export class StaffDirectoryService {
   private readonly context = inject(IAM_PORTAL_CONTEXT);
+
+  async create(input: StaffCreateInput, key: string): Promise<StaffCreateResult> {
+    const passwordBytes = new TextEncoder().encode(input.password).length;
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input.email) || input.email.length > 255 ||
+        !input.name.trim() || input.name.length > 100 ||
+        input.password.length < 8 || input.password.length > 72 || passwordBytes > 72 ||
+        !/[A-Z]/.test(input.password) || !/[0-9]/.test(input.password) ||
+        (input.role !== 'DENTIST' && input.role !== 'SECRETARY_ASSISTANT') ||
+        !staffIdPattern.test(key)) return { kind: 'invalid' };
+    if (this.context.signal.aborted) return { kind: 'unavailable' };
+    try {
+      const result = await this.context.http.request({
+        method: 'POST', path: '/api/v1/auth/register', body: input,
+        headers: { 'Idempotency-Key': key }, signal: this.context.signal,
+      });
+      if (this.context.signal.aborted) return { kind: 'unavailable' };
+      if (!result.ok) {
+        return { kind: result.status === 400 ? 'invalid' :
+          result.status === 401 ? 'session-expired' :
+          result.status === 403 ? 'forbidden' :
+          result.status === 409 ? 'conflict' : 'unavailable' };
+      }
+      if (result.status !== 201 || !isStaff(result.data) ||
+          result.data.status !== 'PENDING_VERIFICATION' ||
+          result.data.roles.length !== 1 || result.data.roles[0] !== input.role) {
+        return { kind: 'unavailable' };
+      }
+      return { kind: 'created', staff: result.data };
+    } catch {
+      return { kind: 'unavailable' };
+    }
+  }
 
   async read(id: string): Promise<StaffReadResult> {
     if (!staffIdPattern.test(id) || this.context.signal.aborted) return { kind: 'unavailable' };
