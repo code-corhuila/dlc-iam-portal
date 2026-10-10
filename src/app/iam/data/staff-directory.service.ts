@@ -39,14 +39,13 @@ const roles = new Set(['ADMINISTRATOR', 'DENTIST', 'SECRETARY_ASSISTANT']);
 const statuses = new Set(['PENDING_VERIFICATION', 'ACTIVE', 'LOCKED', 'DISABLED']);
 const staffKeys = new Set(['id', 'email', 'name', 'roles', 'status', 'version', 'createdAt', 'updatedAt']);
 const pageLimit = 20;
-const staffIdPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const idempotencyKeyPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 function isStaff(value: unknown): value is Staff {
   if (!record(value)) return false;
   return Object.keys(value).every((key) => staffKeys.has(key)) &&
     typeof value['id'] === 'string' &&
-    staffIdPattern.test(value['id']) &&
+    uuidPattern.test(value['id']) &&
     typeof value['email'] === 'string' && value['email'].length > 0 &&
     typeof value['name'] === 'string' && value['name'].length > 0 && value['name'].length <= 100 &&
     Array.isArray(value['roles']) && value['roles'].every((role: unknown) => roles.has(role as string)) &&
@@ -74,10 +73,10 @@ export class StaffDirectoryService {
 
   async disable(member: Staff, reason: string, key: string): Promise<StaffDisableResult> {
     const trimmedReason = reason.trim();
-    if (!staffIdPattern.test(member.id) || member.status === 'DISABLED' ||
+    if (!uuidPattern.test(member.id) ||
         !Number.isInteger(member.version) || member.version < 1 ||
         !trimmedReason || trimmedReason.length > 1000 ||
-        !idempotencyKeyPattern.test(key)) return { kind: 'invalid' };
+        !uuidPattern.test(key)) return { kind: 'invalid' };
     if (this.context.signal.aborted) return { kind: 'unavailable' };
     try {
       const result = await this.context.http.request({
@@ -106,7 +105,7 @@ export class StaffDirectoryService {
 
   async updateName(id: string, name: string, expectedVersion: number): Promise<StaffUpdateResult> {
     const trimmedName = name.trim();
-    if (!staffIdPattern.test(id) || !trimmedName || trimmedName.length > 100 ||
+    if (!uuidPattern.test(id) || !trimmedName || trimmedName.length > 100 ||
         !Number.isInteger(expectedVersion) || expectedVersion < 1) return { kind: 'invalid' };
     if (this.context.signal.aborted) return { kind: 'unavailable' };
     try {
@@ -138,7 +137,7 @@ export class StaffDirectoryService {
         input.password.length < 8 || input.password.length > 72 || passwordBytes > 72 ||
         !/[A-Z]/.test(input.password) || !/[0-9]/.test(input.password) ||
         (input.role !== 'DENTIST' && input.role !== 'SECRETARY_ASSISTANT') ||
-        !staffIdPattern.test(key)) return { kind: 'invalid' };
+        !uuidPattern.test(key)) return { kind: 'invalid' };
     if (this.context.signal.aborted) return { kind: 'unavailable' };
     try {
       const result = await this.context.http.request({
@@ -164,7 +163,7 @@ export class StaffDirectoryService {
   }
 
   async read(id: string): Promise<StaffReadResult> {
-    if (!staffIdPattern.test(id) || this.context.signal.aborted) return { kind: 'unavailable' };
+    if (!uuidPattern.test(id) || this.context.signal.aborted) return { kind: 'unavailable' };
     try {
       const result = await this.context.http.request({
         method: 'GET', path: `/api/v1/auth/staff/${id}`, signal: this.context.signal,

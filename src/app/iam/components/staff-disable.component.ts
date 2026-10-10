@@ -1,4 +1,4 @@
-import { Component, DestroyRef, inject, input, output, signal } from '@angular/core';
+import { Component, DestroyRef, OnChanges, SimpleChanges, inject, input, output, signal } from '@angular/core';
 import { StaffDirectoryService } from '../data/staff-directory.service';
 import type { Staff } from '../model/staff';
 
@@ -26,7 +26,7 @@ import type { Staff } from '../model/staff';
         <p role="alert">Escribe un motivo válido.</p>
       } @else if (state() === 'conflict') {
         <p role="alert">Este registro cambió. Consúltalo de nuevo antes de deshabilitar.</p>
-        <button type="button" (click)="refresh.emit()">Recargar registro</button>
+        <button type="button" (click)="refreshRecord()">Recargar registro</button>
       } @else if (state() === 'forbidden') {
         <p role="alert">No tienes permiso para deshabilitar este registro.</p>
       } @else if (state() === 'session-expired') {
@@ -39,7 +39,7 @@ import type { Staff } from '../model/staff';
     </form>
   `,
 })
-export class StaffDisableComponent {
+export class StaffDisableComponent implements OnChanges {
   private readonly directory = inject(StaffDirectoryService);
   private readonly destroyRef = inject(DestroyRef);
   readonly member = input.required<Staff>();
@@ -49,6 +49,18 @@ export class StaffDisableComponent {
   readonly state = signal<'editing' | 'saving' | 'invalid' | 'conflict' | 'forbidden' |
     'session-expired' | 'not-found' | 'error'>('editing');
   private idempotencyKey: string | null = null;
+
+  ngOnChanges(changes: SimpleChanges): void {
+    if (changes['member'] && !changes['member'].firstChange) {
+      this.idempotencyKey = null;
+      this.state.set('editing');
+    }
+  }
+
+  refreshRecord(): void {
+    this.idempotencyKey = null;
+    this.refresh.emit();
+  }
 
   invalidateKey(): void {
     if (this.state() === 'saving') return;

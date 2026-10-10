@@ -138,8 +138,6 @@ describe('StaffDirectoryService', () => {
   it('rejects invalid disabling and a response with private or mismatched data', async () => {
     const { directory, request } = setup();
     expect(await directory.disable(staff, ' ', key)).toEqual({ kind: 'invalid' });
-    expect(await directory.disable({ ...staff, status: 'DISABLED' }, 'Baja', key))
-      .toEqual({ kind: 'invalid' });
     expect(await directory.disable(staff, 'Baja', 'bad-key'))
       .toEqual({ kind: 'invalid' });
     expect(request).not.toHaveBeenCalled();
@@ -148,6 +146,14 @@ describe('StaffDirectoryService', () => {
     request.mockResolvedValueOnce({ ok: true, status: 200, data: { ...staff, version: 2 } });
     expect(await directory.disable(staff, 'Baja', key)).toEqual({ kind: 'unavailable' });
     expect(await directory.disable(staff, 'Baja', key)).toEqual({ kind: 'unavailable' });
+  });
+
+  it('leaves the decision about an already-disabled account to Auth', async () => {
+    const { directory, request } = setup();
+    request.mockResolvedValue({ ok: false, status: 409 });
+    expect(await directory.disable({ ...staff, status: 'DISABLED' }, 'Baja', key))
+      .toEqual({ kind: 'conflict' });
+    expect(request).toHaveBeenCalledTimes(1);
   });
 
   it.each([
