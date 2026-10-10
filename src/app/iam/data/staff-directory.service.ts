@@ -62,9 +62,10 @@ export class StaffDirectoryService {
   private readonly context = inject(IAM_PORTAL_CONTEXT);
 
   async create(input: StaffCreateInput, key: string): Promise<StaffCreateResult> {
+    const name = input.name.trim();
     const passwordBytes = new TextEncoder().encode(input.password).length;
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input.email) || input.email.length > 255 ||
-        !input.name.trim() || input.name.length > 100 ||
+        !name || name.length > 100 ||
         input.password.length < 8 || input.password.length > 72 || passwordBytes > 72 ||
         !/[A-Z]/.test(input.password) || !/[0-9]/.test(input.password) ||
         (input.role !== 'DENTIST' && input.role !== 'SECRETARY_ASSISTANT') ||
@@ -72,7 +73,7 @@ export class StaffDirectoryService {
     if (this.context.signal.aborted) return { kind: 'unavailable' };
     try {
       const result = await this.context.http.request({
-        method: 'POST', path: '/api/v1/auth/register', body: input,
+        method: 'POST', path: '/api/v1/auth/register', body: { ...input, name },
         headers: { 'Idempotency-Key': key }, signal: this.context.signal,
       });
       if (this.context.signal.aborted) return { kind: 'unavailable' };
