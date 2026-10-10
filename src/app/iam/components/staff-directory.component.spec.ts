@@ -5,10 +5,11 @@ import { StaffDirectoryComponent } from './staff-directory.component';
 
 describe('StaffDirectoryComponent', () => {
   async function render(list: ReturnType<typeof vi.fn>, read = vi.fn(),
-    updateName = vi.fn(), disable = vi.fn(), enable = vi.fn()) {
+    updateName = vi.fn(), disable = vi.fn(), enable = vi.fn(), assignRoles = vi.fn()) {
     await TestBed.configureTestingModule({
       imports: [StaffDirectoryComponent],
-      providers: [{ provide: StaffDirectoryService, useValue: { list, read, updateName, disable, enable } }],
+      providers: [{ provide: StaffDirectoryService,
+        useValue: { list, read, updateName, disable, enable, assignRoles } }],
     }).compileComponents();
     const fixture = TestBed.createComponent(StaffDirectoryComponent);
     fixture.detectChanges();
@@ -209,6 +210,47 @@ describe('StaffDirectoryComponent', () => {
     host.querySelector<HTMLButtonElement>('section.directory > button')?.click();
     fixture.detectChanges();
     expect(host.querySelector('li')?.textContent).toContain('Pendiente de verificación');
+  });
+
+  it('updates the detail and list after Auth replaces staff roles', async () => {
+    const member = {
+      id: 'a3f80675-6c3d-4f10-8d78-60ed82da53a7',
+      name: 'Ana', email: 'ana@example.test', roles: ['DENTIST'],
+      status: 'ACTIVE', version: 2,
+    };
+    const page = { data: [member], meta: { page: 1, limit: 20, total: 1, totalPages: 1 } };
+    const assigned = { ...member, roles: ['SECRETARY_ASSISTANT'], version: 3 };
+    const assignRoles = vi.fn().mockResolvedValue({ kind: 'assigned', staff: assigned });
+    const { fixture, host } = await render(
+      vi.fn().mockResolvedValue({ kind: 'loaded', page }),
+      vi.fn().mockResolvedValue({ kind: 'loaded', staff: member }),
+      vi.fn(), vi.fn(), vi.fn(), assignRoles,
+    );
+    host.querySelector<HTMLButtonElement>('li button')?.click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    [...host.querySelectorAll<HTMLButtonElement>('button')]
+      .find((button) => button.textContent?.includes('Cambiar roles'))?.click();
+    fixture.detectChanges();
+    const form = host.querySelector('dlc-staff-roles form');
+    const dentist = form?.querySelector<HTMLInputElement>('input[value="DENTIST"]');
+    const assistant = form?.querySelector<HTMLInputElement>('input[value="SECRETARY_ASSISTANT"]');
+    const reason = form?.querySelector<HTMLTextAreaElement>('textarea[name="reason"]');
+    if (!form || !dentist || !assistant || !reason) throw new Error('Role form is missing');
+    dentist.checked = false;
+    assistant.checked = true;
+    reason.value = 'Cambio aprobado';
+    form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(assignRoles).toHaveBeenCalledWith(expect.objectContaining({ id: member.id }),
+      ['SECRETARY_ASSISTANT'], 'Cambio aprobado');
+    expect(host.querySelector('dlc-staff-roles')).toBeNull();
+    expect(host.querySelector('section[aria-label="Detalle de personal"]')?.textContent)
+      .toContain('SECRETARY_ASSISTANT');
+    host.querySelector<HTMLButtonElement>('section.directory > button')?.click();
+    fixture.detectChanges();
+    expect(host.querySelector('li')?.textContent).toContain('SECRETARY_ASSISTANT');
   });
 
   it('does not show a detail that arrives after returning to the list', async () => {
