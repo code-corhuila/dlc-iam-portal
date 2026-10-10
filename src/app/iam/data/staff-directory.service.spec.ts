@@ -48,4 +48,12 @@ describe('StaffDirectoryService', () => {
     request.mockResolvedValue({ ok: false, status: 403 });
     expect(await directory.list(1)).toEqual({ kind: 'forbidden' });
   });
+
+  it('distinguishes a protected 401 from a service failure', async () => {
+    const { directory, request } = setup();
+    request.mockResolvedValueOnce({ ok: false, status: 401 });
+    request.mockResolvedValueOnce({ ok: false, status: 503 });
+    expect(await directory.list(1)).toEqual({ kind: 'session-expired' });
+    expect(await directory.list(1)).toEqual({ kind: 'unavailable' });
+  });
 });

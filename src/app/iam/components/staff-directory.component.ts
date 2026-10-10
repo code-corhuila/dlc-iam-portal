@@ -13,6 +13,8 @@ import type { StaffPage, StaffStatus } from '../model/staff';
         <p role="status">Cargando personal…</p>
       } @else if (state() === 'forbidden') {
         <p role="alert">No tienes permiso para consultar el personal.</p>
+      } @else if (state() === 'session-expired') {
+        <p role="alert">La sesión terminó. Inicia sesión de nuevo.</p>
       } @else if (state() === 'error') {
         <p role="alert">No se pudo cargar el personal.</p>
         <button type="button" (click)="load(requestedPage)">Reintentar</button>
@@ -44,25 +46,27 @@ import type { StaffPage, StaffStatus } from '../model/staff';
 export class StaffDirectoryComponent implements OnInit {
   private readonly directory = inject(StaffDirectoryService);
   private readonly destroyRef = inject(DestroyRef);
-  readonly state = signal<'loading' | 'ready' | 'forbidden' | 'error'>('loading');
+  readonly state = signal<'loading' | 'ready' | 'forbidden' | 'session-expired' | 'error'>('loading');
   readonly page = signal<StaffPage | null>(null);
   requestedPage = 1;
+  private loadVersion = 0;
 
   ngOnInit(): void {
     void this.load(1);
   }
 
   async load(page: number): Promise<void> {
+    const version = ++this.loadVersion;
     this.requestedPage = page;
     this.page.set(null);
     this.state.set('loading');
     const result = await this.directory.list(page);
-    if (this.destroyRef.destroyed) return;
+    if (this.destroyRef.destroyed || version !== this.loadVersion) return;
     if (result.kind === 'loaded') {
       this.page.set(result.page);
       this.state.set('ready');
     } else {
-      this.state.set(result.kind === 'forbidden' ? 'forbidden' : 'error');
+      this.state.set(result.kind === 'unavailable' ? 'error' : result.kind);
     }
   }
 

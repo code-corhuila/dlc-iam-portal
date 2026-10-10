@@ -4,7 +4,7 @@ import type { Staff, StaffPage } from '../model/staff';
 
 export type StaffListResult =
   | { readonly kind: 'loaded'; readonly page: StaffPage }
-  | { readonly kind: 'forbidden' | 'unavailable' };
+  | { readonly kind: 'forbidden' | 'session-expired' | 'unavailable' };
 
 function record(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -13,6 +13,7 @@ function record(value: unknown): value is Record<string, unknown> {
 const roles = new Set(['ADMINISTRATOR', 'DENTIST', 'SECRETARY_ASSISTANT']);
 const statuses = new Set(['PENDING_VERIFICATION', 'ACTIVE', 'LOCKED', 'DISABLED']);
 const staffKeys = new Set(['id', 'email', 'name', 'roles', 'status', 'version', 'createdAt', 'updatedAt']);
+const pageLimit = 20;
 
 function isStaff(value: unknown): value is Staff {
   if (!record(value)) return false;
@@ -52,11 +53,14 @@ export class StaffDirectoryService {
       const result = await this.context.http.request({
         method: 'GET',
         path: '/api/v1/auth/staff',
-        query: { page: [String(page)], limit: ['20'] },
+        query: { page: [String(page)], limit: [String(pageLimit)] },
         signal: this.context.signal,
       });
       if (this.context.signal.aborted) return { kind: 'unavailable' };
-      if (!result.ok) return { kind: result.status === 403 ? 'forbidden' : 'unavailable' };
+      if (!result.ok) {
+        return { kind: result.status === 401 ? 'session-expired' :
+          result.status === 403 ? 'forbidden' : 'unavailable' };
+      }
       if (result.status !== 200 || !isStaffPage(result.data) || result.data.meta.page !== page) {
         return { kind: 'unavailable' };
       }
