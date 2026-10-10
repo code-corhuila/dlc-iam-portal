@@ -77,6 +77,20 @@ button[type="submit"]:disabled {
   opacity: .65;
 }
 
+.text-link {
+  align-self: center;
+  margin-top: 14px;
+  border: 0;
+  background: transparent;
+  color: #0f766e;
+  cursor: pointer;
+  font: 600 12px Inter, system-ui, sans-serif;
+}
+
+.text-link:hover {
+  text-decoration: underline;
+}
+
 [role="alert"] {
   margin: 12px 0 0;
   padding: 10px 12px;

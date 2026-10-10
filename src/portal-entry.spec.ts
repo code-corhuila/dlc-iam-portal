@@ -29,7 +29,7 @@ describe('IAM portal entry', () => {
       compositionId: route.compositionId,
       route,
       signal: controller.signal,
-      navigation: undefined,
+      navigation: { request: vi.fn().mockResolvedValue({ status: 'applied' }) },
       session: undefined,
       http: {
         request: vi.fn().mockRejectedValue(new Error('Transport unavailable')),
@@ -51,6 +51,24 @@ describe('IAM portal entry', () => {
     expect(host.style.getPropertyValue('--iam-clinic-background'))
       .toContain('auth-clinic-background.png');
     expect(await handle.canLeave()).toBe(true);
+
+    const recoveryLink = host.querySelector<HTMLButtonElement>('.text-link');
+    if (!recoveryLink) throw new Error('Recovery link is missing');
+    recoveryLink.click();
+    expect(context.navigation.request).toHaveBeenCalledWith({ path: '/recover-password' });
+
+    await handle.updateRoute({
+      ...route,
+      globalPath: '/recover-password',
+      basePath: '/recover-password',
+    });
+    expect(host.querySelector('dlc-recover-password')).not.toBeNull();
+    const backButton = host.querySelector<HTMLButtonElement>(
+      'dlc-recover-password .text-link',
+    );
+    if (!backButton) throw new Error('Back to login button is missing');
+    backButton.click();
+    expect(context.navigation.request).toHaveBeenCalledWith({ path: '/login' });
 
     await handle.updateRoute({ ...route, localPath: '/unknown' });
     expect(host.textContent).toContain('Página no encontrada');

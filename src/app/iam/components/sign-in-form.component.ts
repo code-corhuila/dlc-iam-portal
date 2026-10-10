@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Output, inject, DestroyRef } from '@angular/core';
+import { Component, EventEmitter, Input, Output, inject, DestroyRef } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { IamApiService } from '../data/iam-api.service';
 import { MfaChallenge } from '../model/auth';
@@ -33,6 +33,12 @@ import { MfaChallenge } from '../model/auth';
 
       <button type="submit" [disabled]="loading">Iniciar sesión</button>
 
+      @if (showRecoveryLink) {
+        <button type="button" class="text-link" (click)="recoverPassword.emit()">
+          ¿Olvidaste tu contraseña?
+        </button>
+      }
+
       @if (errorMessage) {
         <p role="alert">{{ errorMessage }}</p>
       }
@@ -44,6 +50,8 @@ export class SignInFormComponent {
   private readonly destroyRef = inject(DestroyRef);
 
   @Output() readonly challenge = new EventEmitter<MfaChallenge>();
+  @Output() readonly recoverPassword = new EventEmitter<void>();
+  @Input() showRecoveryLink = false;
 
   email = '';
   password = '';

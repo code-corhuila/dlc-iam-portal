@@ -1,4 +1,4 @@
-import { Component, OnDestroy, signal } from '@angular/core';
+import { Component, EventEmitter, Input, OnDestroy, Output, signal } from '@angular/core';
 import { SignInFormComponent } from '../components/sign-in-form.component';
 import { MfaChallenge } from '../model/auth';
 
@@ -24,12 +24,18 @@ import { MfaChallenge } from '../model/auth';
           <button type="button" (click)="restartLogin()">Volver a iniciar sesión</button>
         </section>
       } @else {
-        <dlc-sign-in-form (challenge)="showMfa($event)" />
+        <dlc-sign-in-form
+          [showRecoveryLink]="showRecoveryLink"
+          (challenge)="showMfa($event)"
+          (recoverPassword)="recoverPassword.emit()"
+        />
       }
     </section>
   `,
 })
 export class IamPageComponent implements OnDestroy {
+  @Input() showRecoveryLink = false;
+  @Output() readonly recoverPassword = new EventEmitter<void>();
   readonly challenge = signal<MfaChallenge | null>(null);
   readonly failure = signal<'expired' | 'invalid' | null>(null);
   private expiryTimer: ReturnType<typeof setTimeout> | null = null;

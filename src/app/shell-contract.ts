@@ -44,7 +44,10 @@ export interface PortalContext {
   readonly compositionId: string;
   readonly route: PortalRoute;
   readonly signal: AbortSignal;
-  readonly navigation: unknown;
+  readonly navigation: {
+    request(target: { path: string; replace?: boolean }):
+      Promise<{ status: 'applied' | 'cancelled' | 'rejected' }>;
+  };
   readonly session: unknown;
   readonly http: { request(request: HttpRequest): Promise<HttpResult> };
   readonly reportFailure: (
