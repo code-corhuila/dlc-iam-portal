@@ -84,4 +84,52 @@ describe('StaffDirectoryService', () => {
     expect(await directory.read('../sessions')).toEqual({ kind: 'unavailable' });
     expect(request).not.toHaveBeenCalled();
   });
+
+  const createInput = {
+    email: 'new@example.test', name: 'Nuevo personal',
+    password: 'StrongPass1', role: 'DENTIST' as const,
+  };
+  const key = '11111111-1111-4111-8111-111111111111';
+
+  it('creates only pending staff through shell HTTP with an idempotency key', async () => {
+    const { directory, request, controller } = setup();
+    const created = { ...staff, email: createInput.email, name: createInput.name,
+      status: 'PENDING_VERIFICATION' };
+    request.mockResolvedValue({ ok: true, status: 201, data: created });
+
+    expect(await directory.create(createInput, key)).toEqual({ kind: 'created', staff: created });
+    expect(request).toHaveBeenCalledWith({
+      method: 'POST', path: '/api/v1/auth/register', body: createInput,
+      headers: { 'Idempotency-Key': key }, signal: controller.signal,
+    });
+  });
+
+  it('rejects administrator creation and passwords over 72 UTF-8 bytes before HTTP', async () => {
+    const { directory, request } = setup();
+    expect(await directory.create({ ...createInput, role: 'ADMINISTRATOR' as never }, key))
+      .toEqual({ kind: 'invalid' });
+    expect(await directory.create({ ...createInput, password: 'A1' + 'á'.repeat(36) }, key))
+      .toEqual({ kind: 'invalid' });
+    expect(request).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    [400, 'invalid'], [401, 'session-expired'], [403, 'forbidden'],
+    [409, 'conflict'], [503, 'unavailable'],
+  ])('maps create HTTP %i to %s', async (status, kind) => {
+    const { directory, request } = setup();
+    request.mockResolvedValue({ ok: false, status });
+    expect(await directory.create(createInput, key)).toEqual({ kind });
+  });
+
+  it('rejects a private or non-pending creation response and handles transport failure', async () => {
+    const { directory, request } = setup();
+    request.mockResolvedValueOnce({ ok: true, status: 201,
+      data: { ...staff, status: 'PENDING_VERIFICATION', passwordHash: 'secret' } });
+    request.mockResolvedValueOnce({ ok: true, status: 201, data: staff });
+    request.mockRejectedValueOnce(new Error('offline'));
+    expect(await directory.create(createInput, key)).toEqual({ kind: 'unavailable' });
+    expect(await directory.create(createInput, key)).toEqual({ kind: 'unavailable' });
+    expect(await directory.create(createInput, key)).toEqual({ kind: 'unavailable' });
+  });
 });

@@ -119,4 +119,18 @@ describe('StaffDirectoryComponent', () => {
     fixture.detectChanges();
     expect(host.querySelector('section[aria-label="Detalle de personal"]')).toBeNull();
   });
+
+  it('opens the separate creation form and returns to the list', async () => {
+    const page = { data: [], meta: { page: 1, limit: 20, total: 0, totalPages: 0 } };
+    const list = vi.fn().mockResolvedValue({ kind: 'loaded', page });
+    const { fixture, host } = await render(list);
+    host.querySelector<HTMLButtonElement>('button')?.click();
+    fixture.detectChanges();
+    expect(host.querySelector('dlc-staff-create form')).not.toBeNull();
+    host.querySelector<HTMLButtonElement>('dlc-staff-create button[type="button"]')?.click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(host.querySelector('dlc-staff-create')).toBeNull();
+    expect(list).toHaveBeenCalledTimes(2);
+  });
 });
