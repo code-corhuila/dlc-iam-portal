@@ -2,11 +2,12 @@ import { Component, DestroyRef, OnInit, inject, signal } from '@angular/core';
 import { StaffDirectoryService } from '../data/staff-directory.service';
 import type { Staff, StaffPage, StaffStatus } from '../model/staff';
 import { StaffCreateComponent } from './staff-create.component';
+import { StaffEditComponent } from './staff-edit.component';
 
 @Component({
   selector: 'dlc-staff-directory',
   standalone: true,
-  imports: [StaffCreateComponent],
+  imports: [StaffCreateComponent, StaffEditComponent],
   styleUrl: './staff-directory.component.css',
   template: `
     <section class="directory" aria-label="Administración de personal">
@@ -29,6 +30,12 @@ import { StaffCreateComponent } from './staff-create.component';
             <button type="button" (click)="openDetail(selectedId()!)">Reintentar</button>
           } @else if (detail(); as member) {
             <h2>{{ member.name }}</h2>
+            @if (editing()) {
+              <dlc-staff-edit [member]="member" (saved)="saveDetail($event)"
+                (cancel)="editing.set(false)" (refresh)="openDetail(member.id)" />
+            } @else {
+              <button type="button" (click)="editing.set(true)">Editar nombre</button>
+            }
             <dl>
               <div><dt>Correo</dt><dd>{{ member.email }}</dd></div>
               <div><dt>Roles</dt><dd>{{ member.roles.join(', ') }}</dd></div>
@@ -81,6 +88,7 @@ export class StaffDirectoryComponent implements OnInit {
   readonly selectedId = signal<string | null>(null);
   readonly detail = signal<Staff | null>(null);
   readonly creating = signal(false);
+  readonly editing = signal(false);
   readonly detailState = signal<'loading' | 'ready' | 'forbidden' | 'not-found' | 'session-expired' | 'error'>('loading');
   requestedPage = 1;
   private loadVersion = 0;
@@ -107,6 +115,7 @@ export class StaffDirectoryComponent implements OnInit {
 
   async openDetail(id: string): Promise<void> {
     const version = ++this.detailVersion;
+    this.editing.set(false);
     this.selectedId.set(id);
     this.detail.set(null);
     this.detailState.set('loading');
@@ -122,6 +131,7 @@ export class StaffDirectoryComponent implements OnInit {
 
   closeDetail(): void {
     ++this.detailVersion;
+    this.editing.set(false);
     this.selectedId.set(null);
     this.detail.set(null);
   }
@@ -129,6 +139,16 @@ export class StaffDirectoryComponent implements OnInit {
   closeCreate(): void {
     this.creating.set(false);
     void this.load(1);
+  }
+
+  saveDetail(staff: Staff): void {
+    this.detail.set(staff);
+    this.editing.set(false);
+    const current = this.page();
+    if (current) {
+      this.page.set({ ...current, data: current.data.map((member) =>
+        member.id === staff.id ? staff : member) });
+    }
   }
 
   statusLabel(status: StaffStatus): string {
