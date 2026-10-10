@@ -3,11 +3,12 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-  "check:skeleton": "node scripts/check-skeleton.mjs",
-  "test": "ng test --watch=false",
-  "build": "ng build",
-  "start": "ng serve"
-},
+    "check:skeleton": "node scripts/check-skeleton.mjs",
+    "test": "ng test --watch=false",
+    "build:portal": "ng run dlc-iam-portal:portal-module && node scripts/package-portal.mjs",
+    "build": "ng build",
+    "start": "ng serve"
+  },
   "dependencies": {
     "@angular-architects/native-federation": "^21.0.0",
     "@angular/animations": "^21.2.24",
