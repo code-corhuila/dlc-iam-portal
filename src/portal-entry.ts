@@ -2,6 +2,8 @@ import { Component, ErrorHandler, inject, signal } from '@angular/core';
 import { createApplication } from '@angular/platform-browser';
 import { IamApiService } from './app/iam/data/iam-api.service';
 import { RecoverPasswordComponent } from './app/iam/components/recover-password.component';
+import { StaffDirectoryComponent } from './app/iam/components/staff-directory.component';
+import { StaffDirectoryService } from './app/iam/data/staff-directory.service';
 import {
   IAM_PORTAL_CONTEXT,
   ShellIamApiService,
@@ -21,7 +23,7 @@ const ownedBases = new Set([
 @Component({
   selector: 'dlc-iam-portal-root',
   standalone: true,
-  imports: [IamPageComponent, RecoverPasswordComponent],
+  imports: [IamPageComponent, RecoverPasswordComponent, StaffDirectoryComponent],
   styleUrl: './app/iam/pages/iam-page.component.css',
   template: `
     @if (route().basePath === '/login' && route().localPath === '/') {
@@ -30,6 +32,8 @@ const ownedBases = new Set([
       <section class="iam-auth-surface" aria-label="Recuperación de contraseña">
         <dlc-recover-password (backToLogin)="requestRoute('/login')" />
       </section>
+    } @else if (route().basePath === '/app/administration' && route().localPath === '/') {
+      <dlc-staff-directory />
     } @else {
       <section role="status"><h1>Página no encontrada</h1></section>
     }
@@ -78,6 +82,7 @@ export async function mount(
     providers: [
       { provide: IAM_PORTAL_CONTEXT, useValue: context },
       { provide: IamApiService, useClass: ShellIamApiService },
+      StaffDirectoryService,
       {
         provide: ErrorHandler,
         useValue: {
