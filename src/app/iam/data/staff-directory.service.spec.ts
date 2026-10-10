@@ -56,4 +56,32 @@ describe('StaffDirectoryService', () => {
     expect(await directory.list(1)).toEqual({ kind: 'session-expired' });
     expect(await directory.list(1)).toEqual({ kind: 'unavailable' });
   });
+
+  it('reads a staff detail through shell HTTP and rejects mismatched or private data', async () => {
+    const { directory, request, controller } = setup();
+    request.mockResolvedValueOnce({ ok: true, status: 200, data: staff });
+    expect(await directory.read(staff.id)).toEqual({ kind: 'loaded', staff });
+    expect(request).toHaveBeenCalledWith({
+      method: 'GET', path: `/api/v1/auth/staff/${staff.id}`, signal: controller.signal,
+    });
+
+    request.mockResolvedValueOnce({ ok: true, status: 200, data: { ...staff, passwordHash: 'secret' } });
+    expect(await directory.read(staff.id)).toEqual({ kind: 'unavailable' });
+    request.mockResolvedValueOnce({ ok: true, status: 200, data: { ...staff, id: '11111111-1111-1111-1111-111111111111' } });
+    expect(await directory.read(staff.id)).toEqual({ kind: 'unavailable' });
+  });
+
+  it.each([
+    [401, 'session-expired'], [403, 'forbidden'], [404, 'not-found'], [503, 'unavailable'],
+  ])('maps detail HTTP %i to %s', async (status, kind) => {
+    const { directory, request } = setup();
+    request.mockResolvedValue({ ok: false, status });
+    expect(await directory.read(staff.id)).toEqual({ kind });
+  });
+
+  it('does not request a malformed staff identifier', async () => {
+    const { directory, request } = setup();
+    expect(await directory.read('../sessions')).toEqual({ kind: 'unavailable' });
+    expect(request).not.toHaveBeenCalled();
+  });
 });

@@ -6,6 +6,10 @@ export type StaffListResult =
   | { readonly kind: 'loaded'; readonly page: StaffPage }
   | { readonly kind: 'forbidden' | 'session-expired' | 'unavailable' };
 
+export type StaffReadResult =
+  | { readonly kind: 'loaded'; readonly staff: Staff }
+  | { readonly kind: 'forbidden' | 'not-found' | 'session-expired' | 'unavailable' };
+
 function record(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
@@ -14,12 +18,13 @@ const roles = new Set(['ADMINISTRATOR', 'DENTIST', 'SECRETARY_ASSISTANT']);
 const statuses = new Set(['PENDING_VERIFICATION', 'ACTIVE', 'LOCKED', 'DISABLED']);
 const staffKeys = new Set(['id', 'email', 'name', 'roles', 'status', 'version', 'createdAt', 'updatedAt']);
 const pageLimit = 20;
+const staffIdPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 function isStaff(value: unknown): value is Staff {
   if (!record(value)) return false;
   return Object.keys(value).every((key) => staffKeys.has(key)) &&
     typeof value['id'] === 'string' &&
-    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value['id']) &&
+    staffIdPattern.test(value['id']) &&
     typeof value['email'] === 'string' && value['email'].length > 0 &&
     typeof value['name'] === 'string' && value['name'].length > 0 && value['name'].length <= 100 &&
     Array.isArray(value['roles']) && value['roles'].every((role: unknown) => roles.has(role as string)) &&
@@ -44,6 +49,26 @@ function isStaffPage(value: unknown): value is StaffPage {
 @Injectable()
 export class StaffDirectoryService {
   private readonly context = inject(IAM_PORTAL_CONTEXT);
+
+  async read(id: string): Promise<StaffReadResult> {
+    if (!staffIdPattern.test(id) || this.context.signal.aborted) return { kind: 'unavailable' };
+    try {
+      const result = await this.context.http.request({
+        method: 'GET', path: `/api/v1/auth/staff/${id}`, signal: this.context.signal,
+      });
+      if (this.context.signal.aborted) return { kind: 'unavailable' };
+      if (!result.ok) {
+        return { kind: result.status === 401 ? 'session-expired' :
+          result.status === 403 ? 'forbidden' :
+          result.status === 404 ? 'not-found' : 'unavailable' };
+      }
+      if (result.status !== 200 || !isStaff(result.data) ||
+          result.data.id.toLowerCase() !== id.toLowerCase()) return { kind: 'unavailable' };
+      return { kind: 'loaded', staff: result.data };
+    } catch {
+      return { kind: 'unavailable' };
+    }
+  }
 
   async list(page: number): Promise<StaffListResult> {
     if (!Number.isInteger(page) || page < 1 || this.context.signal.aborted) {

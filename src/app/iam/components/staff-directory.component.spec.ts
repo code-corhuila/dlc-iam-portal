@@ -4,10 +4,10 @@ import { StaffDirectoryService } from '../data/staff-directory.service';
 import { StaffDirectoryComponent } from './staff-directory.component';
 
 describe('StaffDirectoryComponent', () => {
-  async function render(list: ReturnType<typeof vi.fn>) {
+  async function render(list: ReturnType<typeof vi.fn>, read = vi.fn()) {
     await TestBed.configureTestingModule({
       imports: [StaffDirectoryComponent],
-      providers: [{ provide: StaffDirectoryService, useValue: { list } }],
+      providers: [{ provide: StaffDirectoryService, useValue: { list, read } }],
     }).compileComponents();
     const fixture = TestBed.createComponent(StaffDirectoryComponent);
     fixture.detectChanges();
@@ -77,5 +77,46 @@ describe('StaffDirectoryComponent', () => {
     await oldRequest;
     fixture.detectChanges();
     expect(host.textContent).toContain('Página 3 de 3');
+  });
+
+  it('loads an owner detail and returns to the current list', async () => {
+    const member = {
+      id: 'a3f80675-6c3d-4f10-8d78-60ed82da53a7',
+      name: 'Ana Pérez', email: 'ana@example.test', roles: ['DENTIST'],
+      status: 'DISABLED', version: 2,
+    };
+    const page = { data: [member], meta: { page: 1, limit: 20, total: 1, totalPages: 1 } };
+    const read = vi.fn().mockResolvedValue({ kind: 'loaded', staff: member });
+    const { fixture, host } = await render(vi.fn().mockResolvedValue({ kind: 'loaded', page }), read);
+    host.querySelector<HTMLButtonElement>('li button')?.click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(read).toHaveBeenCalledWith(member.id);
+    expect(host.querySelector('section[aria-label="Detalle de personal"]')?.textContent)
+      .toContain('Deshabilitado');
+    expect(host.querySelector('ul')).toBeNull();
+    host.querySelector<HTMLButtonElement>('button')?.click();
+    fixture.detectChanges();
+    expect(host.querySelector('ul')).not.toBeNull();
+  });
+
+  it('does not show a detail that arrives after returning to the list', async () => {
+    const member = {
+      id: 'a3f80675-6c3d-4f10-8d78-60ed82da53a7',
+      name: 'Ana Pérez', email: 'ana@example.test', roles: ['DENTIST'],
+      status: 'ACTIVE', version: 1,
+    };
+    const page = { data: [member], meta: { page: 1, limit: 20, total: 1, totalPages: 1 } };
+    let resolveRead!: (value: unknown) => void;
+    const read = vi.fn().mockImplementation(() => new Promise((resolve) => { resolveRead = resolve; }));
+    const { fixture, host } = await render(vi.fn().mockResolvedValue({ kind: 'loaded', page }), read);
+    host.querySelector<HTMLButtonElement>('li button')?.click();
+    fixture.detectChanges();
+    host.querySelector<HTMLButtonElement>('button')?.click();
+    resolveRead({ kind: 'loaded', staff: member });
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(host.querySelector('section[aria-label="Detalle de personal"]')).toBeNull();
   });
 });
