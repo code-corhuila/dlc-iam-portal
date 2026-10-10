@@ -91,3 +91,7 @@ body {
   color: #71808b;
   white-space: nowrap;
 }
+
+.preview-main dlc-iam-page {
+  --iam-clinic-background: url('/auth-clinic-background.png');
+}
