@@ -5,6 +5,10 @@ import { IamApiService } from './iam-api.service';
 
 @Injectable()
 export class FakeIamApiService extends IamApiService {
+  override requestPasswordRecovery(_email: string): Observable<void> {
+    return throwError(() => new Error('Recovery is unavailable in the standalone preview'));
+  }
+
   override login(credentials: LoginCredentials): Observable<MfaChallenge> {
     if (
       credentials.email !== 'staff@example.test' ||
