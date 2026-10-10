@@ -85,6 +85,37 @@ describe('StaffDirectoryService', () => {
     expect(request).not.toHaveBeenCalled();
   });
 
+  it('updates only the name with the loaded version through shell HTTP', async () => {
+    const { directory, request, controller } = setup();
+    const updated = { ...staff, name: 'Ana Pérez', version: 2 };
+    request.mockResolvedValue({ ok: true, status: 200, data: updated });
+    expect(await directory.updateName(staff.id, '  Ana Pérez  ', 1))
+      .toEqual({ kind: 'updated', staff: updated });
+    expect(request).toHaveBeenCalledWith({
+      method: 'PATCH', path: `/api/v1/auth/staff/${staff.id}`,
+      body: { name: 'Ana Pérez', expectedVersion: 1 }, signal: controller.signal,
+    });
+  });
+
+  it('rejects malformed edit input and a response for another staff member', async () => {
+    const { directory, request } = setup();
+    expect(await directory.updateName(staff.id, '   ', 1)).toEqual({ kind: 'invalid' });
+    expect(await directory.updateName(staff.id, 'Ana', 0)).toEqual({ kind: 'invalid' });
+    expect(request).not.toHaveBeenCalled();
+    request.mockResolvedValue({ ok: true, status: 200,
+      data: { ...staff, id: '11111111-1111-1111-1111-111111111111' } });
+    expect(await directory.updateName(staff.id, 'Ana', 1)).toEqual({ kind: 'unavailable' });
+  });
+
+  it.each([
+    [400, 'invalid'], [401, 'session-expired'], [403, 'forbidden'],
+    [404, 'not-found'], [409, 'conflict'], [503, 'unavailable'],
+  ])('maps update HTTP %i to %s', async (status, kind) => {
+    const { directory, request } = setup();
+    request.mockResolvedValue({ ok: false, status });
+    expect(await directory.updateName(staff.id, 'Ana', 1)).toEqual({ kind });
+  });
+
   const createInput = {
     email: 'new@example.test', name: 'Nuevo personal',
     password: 'StrongPass1', role: 'DENTIST' as const,
