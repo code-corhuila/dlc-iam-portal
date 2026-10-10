@@ -15,6 +15,10 @@ describe('IamPageComponent', () => {
     const fixture = TestBed.createComponent(IamPageComponent);
     fixture.detectChanges();
 
+    const authSurface = (fixture.nativeElement as HTMLElement)
+      .querySelector('section[aria-label="Acceso del personal"] dlc-sign-in-form');
+    expect(authSurface).not.toBeNull();
+
     const signIn = fixture.debugElement.query(By.directive(SignInFormComponent));
     if (!signIn) throw new Error('Sign-in form is missing');
 

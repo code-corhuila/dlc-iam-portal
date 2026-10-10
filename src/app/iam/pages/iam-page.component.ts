@@ -6,14 +6,17 @@ import { MfaChallenge } from '../model/auth';
   selector: 'dlc-iam-page',
   standalone: true,
   imports: [SignInFormComponent],
+  styleUrl: './iam-page.component.css',
   template: `
-    @if (challenge()) {
-      <section aria-live="polite">
-        <h1>Verificación adicional requerida</h1>
-      </section>
-    } @else {
-      <dlc-sign-in-form (challenge)="showMfa($event)" />
-    }
+    <section class="iam-auth-surface" aria-label="Acceso del personal">
+      @if (challenge()) {
+        <section aria-live="polite">
+          <h1>Verificación adicional requerida</h1>
+        </section>
+      } @else {
+        <dlc-sign-in-form (challenge)="showMfa($event)" />
+      }
+    </section>
   `,
 })
 export class IamPageComponent {
