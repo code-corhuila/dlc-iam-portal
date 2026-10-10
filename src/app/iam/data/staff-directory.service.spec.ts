@@ -8,8 +8,8 @@ describe('StaffDirectoryService', () => {
     id: 'a3f80675-6c3d-4f10-8d78-60ed82da53a7',
     email: 'staff@example.test',
     name: 'Personal de prueba',
-    roles: ['DENTIST'],
-    status: 'ACTIVE',
+    roles: ['DENTIST'] as const,
+    status: 'ACTIVE' as const,
     version: 1,
   };
   const page = { data: [staff], meta: { page: 1, limit: 20, total: 1, totalPages: 1 } };
@@ -121,6 +121,43 @@ describe('StaffDirectoryService', () => {
     password: 'StrongPass1', role: 'DENTIST' as const,
   };
   const key = '11111111-1111-4111-8111-111111111111';
+
+  it('disables a versioned staff record through shell HTTP with a reason and retry key', async () => {
+    const { directory, request, controller } = setup();
+    const disabled = { ...staff, status: 'DISABLED', version: 2 };
+    request.mockResolvedValue({ ok: true, status: 200, data: disabled });
+    expect(await directory.disable(staff, '  Baja solicitada  ', key))
+      .toEqual({ kind: 'disabled', staff: disabled });
+    expect(request).toHaveBeenCalledWith({
+      method: 'POST', path: `/api/v1/auth/staff/${staff.id}/disablings`,
+      body: { reason: 'Baja solicitada', expectedVersion: 1 },
+      headers: { 'Idempotency-Key': key }, signal: controller.signal,
+    });
+  });
+
+  it('rejects invalid disabling and a response with private or mismatched data', async () => {
+    const { directory, request } = setup();
+    expect(await directory.disable(staff, ' ', key)).toEqual({ kind: 'invalid' });
+    expect(await directory.disable({ ...staff, status: 'DISABLED' }, 'Baja', key))
+      .toEqual({ kind: 'invalid' });
+    expect(await directory.disable(staff, 'Baja', 'bad-key'))
+      .toEqual({ kind: 'invalid' });
+    expect(request).not.toHaveBeenCalled();
+    request.mockResolvedValueOnce({ ok: true, status: 200,
+      data: { ...staff, status: 'DISABLED', version: 2, passwordHash: 'secret' } });
+    request.mockResolvedValueOnce({ ok: true, status: 200, data: { ...staff, version: 2 } });
+    expect(await directory.disable(staff, 'Baja', key)).toEqual({ kind: 'unavailable' });
+    expect(await directory.disable(staff, 'Baja', key)).toEqual({ kind: 'unavailable' });
+  });
+
+  it.each([
+    [400, 'invalid'], [401, 'session-expired'], [403, 'forbidden'],
+    [404, 'not-found'], [409, 'conflict'], [503, 'unavailable'],
+  ])('maps disabling HTTP %i to %s', async (status, kind) => {
+    const { directory, request } = setup();
+    request.mockResolvedValue({ ok: false, status });
+    expect(await directory.disable(staff, 'Baja', key)).toEqual({ kind });
+  });
 
   it('creates only pending staff through shell HTTP with an idempotency key', async () => {
     const { directory, request, controller } = setup();
