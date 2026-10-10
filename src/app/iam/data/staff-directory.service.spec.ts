@@ -122,6 +122,60 @@ describe('StaffDirectoryService', () => {
   };
   const key = '11111111-1111-4111-8111-111111111111';
 
+  it('replaces allowed roles through shell HTTP with a reason and loaded version', async () => {
+    const { directory, request, controller } = setup();
+    const assigned = { ...staff, roles: ['DENTIST', 'SECRETARY_ASSISTANT'], version: 2 };
+    request.mockResolvedValue({ ok: true, status: 200, data: assigned });
+    expect(await directory.assignRoles(staff, ['DENTIST', 'SECRETARY_ASSISTANT'],
+      '  Cambio autorizado  ')).toEqual({ kind: 'assigned', staff: assigned });
+    expect(request).toHaveBeenCalledWith({
+      method: 'PUT', path: `/api/v1/auth/staff/${staff.id}/role-assignments`,
+      body: { roles: ['DENTIST', 'SECRETARY_ASSISTANT'], expectedVersion: 1,
+        reason: 'Cambio autorizado' }, signal: controller.signal,
+    });
+  });
+
+  it('rejects disallowed, duplicate and empty roles before HTTP', async () => {
+    const { directory, request } = setup();
+    expect(await directory.assignRoles(staff, [], 'Motivo')).toEqual({ kind: 'invalid' });
+    expect(await directory.assignRoles(staff, ['DENTIST', 'DENTIST'], 'Motivo'))
+      .toEqual({ kind: 'invalid' });
+    expect(await directory.assignRoles(staff, ['ADMINISTRATOR' as never], 'Motivo'))
+      .toEqual({ kind: 'invalid' });
+    expect(await directory.assignRoles({ ...staff, roles: ['ADMINISTRATOR'] },
+      ['DENTIST'], 'Motivo')).toEqual({ kind: 'invalid' });
+    expect(await directory.assignRoles(staff, ['SECRETARY_ASSISTANT'], ' '))
+      .toEqual({ kind: 'invalid' });
+    expect(request).not.toHaveBeenCalled();
+  });
+
+  it('rejects stale, mismatched and private role assignment responses', async () => {
+    const { directory, request } = setup();
+    const assigned = { ...staff, roles: ['SECRETARY_ASSISTANT'], version: 2 };
+    request.mockResolvedValueOnce({ ok: true, status: 200,
+      data: { ...assigned, passwordHash: 'secret' } });
+    request.mockResolvedValueOnce({ ok: true, status: 200,
+      data: { ...assigned, version: 1 } });
+    request.mockResolvedValueOnce({ ok: true, status: 200,
+      data: { ...assigned, id: key } });
+    request.mockResolvedValueOnce({ ok: true, status: 200,
+      data: { ...assigned, roles: ['DENTIST'] } });
+    for (let attempt = 0; attempt < 4; attempt++) {
+      expect(await directory.assignRoles(staff, ['SECRETARY_ASSISTANT'], 'Motivo'))
+        .toEqual({ kind: 'unavailable' });
+    }
+  });
+
+  it.each([
+    [400, 'invalid'], [401, 'session-expired'], [403, 'forbidden'],
+    [404, 'not-found'], [409, 'conflict'], [503, 'unavailable'],
+  ])('maps role assignment HTTP %i to %s', async (status, kind) => {
+    const { directory, request } = setup();
+    request.mockResolvedValue({ ok: false, status });
+    expect(await directory.assignRoles(staff, ['SECRETARY_ASSISTANT'], 'Motivo'))
+      .toEqual({ kind });
+  });
+
   it.each(['ACTIVE', 'PENDING_VERIFICATION'] as const)(
     'enables disabled staff into %s through shell HTTP', async (status) => {
       const { directory, request, controller } = setup();
