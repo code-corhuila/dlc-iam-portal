@@ -25,6 +25,23 @@
           },
           "defaultConfiguration": "production"
         },
+        "portal-module": {
+          "builder": "@angular/build:application",
+          "options": {
+            "outputPath": "dist/iam-portal-module",
+            "index": false,
+            "browser": "src/portal-entry.ts",
+            "tsConfig": "tsconfig.app.json",
+            "assets": [
+              {
+                "glob": "auth-clinic-background.png",
+                "input": "public"
+              }
+            ],
+            "styles": [],
+            "outputHashing": "none"
+          }
+        },
         "serve": {
           "builder": "@angular-architects/native-federation:build",
           "options": {

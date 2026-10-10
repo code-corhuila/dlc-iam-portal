@@ -1,12 +1,14 @@
 # DLC IAM Portal
 
-Angular 21 standalone preview for HU-IAM-001, based on the project scaffold.
+Angular 21 IAM portal for HU-IAM-001, with a standalone development preview and a browser-module entry for `dlc-front`.
 
 ## Current state
 
-The portal shows a staff sign-in desktop preview based on the supplied Figma design and an MFA-pending state. It keeps the challenge in memory, rejects malformed or expired challenges, and lets staff restart sign-in when a challenge expires. This client-side expiry is only a UI safeguard; Auth must enforce challenge expiration and single use. `FakeIamApiService` accepts `staff@example.test` / `StrongPass1` and rejects other credentials; the UI displays a generic error. The IAM page uses the clinic background, while the standalone preview shows the Di Lucca logo and static header and footer. No backend or session is required. MFA proof submission, session creation, and integration with `dlc-front` remain pending.
+The standalone development preview uses `FakeIamApiService` with `staff@example.test` / `StrongPass1`; it does not contact Auth or establish a session. The preview includes the Di Lucca header and footer. Its login form shows a generic error, and its MFA challenge stays in memory until expiry, restart, or unmount. Auth remains responsible for enforcing challenge expiry and single use.
 
-CI runs `npm run check:skeleton`, `npm test`, and `npx ng run dlc-iam-portal:build-original:production`. The production entry deliberately blocks startup; the unit tests cover the development preview. Native Federation remains unverified. `federation.config.js` and the files in `deploy/` remain empty.
+The separate `entry.js` module implements the v1 `mount`/`updateRoute`/`canLeave`/`unmount` boundary. It receives HTTP from `dlc-front`, validates the Auth login challenge, and never creates a session. Unknown IAM local routes display a local 404. The shell compositor and its HTTP capability are not yet running together with this module, so live Gateway and Docker acceptance remain pending. MFA proof submission, recovery, and administration screens are also pending.
+
+CI runs the skeleton check, unit tests, the guarded standalone production build, and `npm run build:portal`. The latter emits `entry.js` and its clinic image together and rejects bundled preview credentials. The standalone production entry deliberately blocks startup. Native Federation configuration remains a legacy scaffold placeholder; the browser-module boundary follows [DLC-FRONT composition contract v1](https://github.com/code-corhuila/ods-docs/blob/main/05-architecture/frontend-composition.md).
 
 ## Local verification
 
@@ -14,21 +16,22 @@ CI runs `npm run check:skeleton`, `npm test`, and `npx ng run dlc-iam-portal:bui
 npm run check:skeleton
 npm test
 npx ng run dlc-iam-portal:build-original:production
+npm run build:portal
 npx ng run dlc-iam-portal:serve-original
 ```
 
-These checks do not validate Native Federation, the Gateway, or the complete MFA and session flow.
+These checks do not validate the live Gateway, Docker deployment, MFA proof, or browser session flow.
 
 ## Future responsibilities
 
 - `src/app/iam/components/`: sign-in and MFA forms.
-- `src/app/iam/data/`: login port and temporary fake adapter. A future HTTP adapter must use the shared client from `dlc-front` and validate Gateway responses.
+- `src/app/iam/data/`: login port, development-only fake adapter, and shell HTTP adapter.
 - `src/app/iam/model/`: types based on the IAM OpenAPI contract.
 - `src/app/iam/pages/`: IAM pages.
-- `src/app/iam/iam.routes.ts`: routes to expose through Native Federation.
-- `src/app/shell-contract.ts`: integration contract with the shell.
+- `src/portal-entry.ts`: browser-module lifecycle for the compositor.
+- `src/app/shell-contract.ts`: framework-neutral integration types.
 
-`dlc-front` will own the session, shared HTTP client, and Gateway URL. The portal does not create or store sessions. `.github/CODEOWNERS` already existed on the base branch and was retained.
+`dlc-front` owns the browser session, shared HTTP client, and Gateway URL. The portal does not create or store sessions. `.github/CODEOWNERS` already existed on the base branch and was retained.
 
 ## Governance
 
