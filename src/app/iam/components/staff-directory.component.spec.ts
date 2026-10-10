@@ -4,10 +4,10 @@ import { StaffDirectoryService } from '../data/staff-directory.service';
 import { StaffDirectoryComponent } from './staff-directory.component';
 
 describe('StaffDirectoryComponent', () => {
-  async function render(list: ReturnType<typeof vi.fn>, read = vi.fn()) {
+  async function render(list: ReturnType<typeof vi.fn>, read = vi.fn(), updateName = vi.fn()) {
     await TestBed.configureTestingModule({
       imports: [StaffDirectoryComponent],
-      providers: [{ provide: StaffDirectoryService, useValue: { list, read } }],
+      providers: [{ provide: StaffDirectoryService, useValue: { list, read, updateName } }],
     }).compileComponents();
     const fixture = TestBed.createComponent(StaffDirectoryComponent);
     fixture.detectChanges();
@@ -99,6 +99,39 @@ describe('StaffDirectoryComponent', () => {
     host.querySelector<HTMLButtonElement>('button')?.click();
     fixture.detectChanges();
     expect(host.querySelector('ul')).not.toBeNull();
+  });
+
+  it('updates the detail and list after a successful name edit', async () => {
+    const member = {
+      id: 'a3f80675-6c3d-4f10-8d78-60ed82da53a7',
+      name: 'Ana', email: 'ana@example.test', roles: ['DENTIST'],
+      status: 'ACTIVE', version: 2,
+    };
+    const page = { data: [member], meta: { page: 1, limit: 20, total: 1, totalPages: 1 } };
+    const updated = { ...member, name: 'Ana Pérez', version: 3 };
+    const updateName = vi.fn().mockResolvedValue({ kind: 'updated', staff: updated });
+    const { fixture, host } = await render(
+      vi.fn().mockResolvedValue({ kind: 'loaded', page }),
+      vi.fn().mockResolvedValue({ kind: 'loaded', staff: member }), updateName,
+    );
+    host.querySelector<HTMLButtonElement>('li button')?.click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    host.querySelector<HTMLButtonElement>('section[aria-label="Detalle de personal"] button')?.click();
+    fixture.detectChanges();
+    const form = host.querySelector('dlc-staff-edit form');
+    const input = form?.querySelector<HTMLInputElement>('input[name="name"]');
+    if (!form || !input) throw new Error('Edit form is missing');
+    input.value = 'Ana Pérez';
+    form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(updateName).toHaveBeenCalledWith(member.id, 'Ana Pérez', 2);
+    expect(host.querySelector('h2')?.textContent).toContain('Ana Pérez');
+    expect(host.querySelector('dlc-staff-edit')).toBeNull();
+    host.querySelector<HTMLButtonElement>('section.directory > button')?.click();
+    fixture.detectChanges();
+    expect(host.querySelector('li strong')?.textContent).toContain('Ana Pérez');
   });
 
   it('does not show a detail that arrives after returning to the list', async () => {

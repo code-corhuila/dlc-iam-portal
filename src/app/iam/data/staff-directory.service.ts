@@ -21,6 +21,11 @@ export type StaffCreateResult =
   | { readonly kind: 'created'; readonly staff: Staff }
   | { readonly kind: 'invalid' | 'conflict' | 'forbidden' | 'session-expired' | 'unavailable' };
 
+export type StaffUpdateResult =
+  | { readonly kind: 'updated'; readonly staff: Staff }
+  | { readonly kind: 'invalid' | 'conflict' | 'forbidden' | 'not-found' |
+      'session-expired' | 'unavailable' };
+
 function record(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
@@ -60,6 +65,32 @@ function isStaffPage(value: unknown): value is StaffPage {
 @Injectable()
 export class StaffDirectoryService {
   private readonly context = inject(IAM_PORTAL_CONTEXT);
+
+  async updateName(id: string, name: string, expectedVersion: number): Promise<StaffUpdateResult> {
+    const trimmedName = name.trim();
+    if (!staffIdPattern.test(id) || !trimmedName || trimmedName.length > 100 ||
+        !Number.isInteger(expectedVersion) || expectedVersion < 1) return { kind: 'invalid' };
+    if (this.context.signal.aborted) return { kind: 'unavailable' };
+    try {
+      const result = await this.context.http.request({
+        method: 'PATCH', path: `/api/v1/auth/staff/${id}`,
+        body: { name: trimmedName, expectedVersion }, signal: this.context.signal,
+      });
+      if (this.context.signal.aborted) return { kind: 'unavailable' };
+      if (!result.ok) {
+        return { kind: result.status === 400 ? 'invalid' :
+          result.status === 401 ? 'session-expired' :
+          result.status === 403 ? 'forbidden' :
+          result.status === 404 ? 'not-found' :
+          result.status === 409 ? 'conflict' : 'unavailable' };
+      }
+      if (result.status !== 200 || !isStaff(result.data) ||
+          result.data.id.toLowerCase() !== id.toLowerCase()) return { kind: 'unavailable' };
+      return { kind: 'updated', staff: result.data };
+    } catch {
+      return { kind: 'unavailable' };
+    }
+  }
 
   async create(input: StaffCreateInput, key: string): Promise<StaffCreateResult> {
     const name = input.name.trim();
