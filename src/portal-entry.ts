@@ -1,6 +1,7 @@
 import { Component, ErrorHandler, inject, signal } from '@angular/core';
 import { createApplication } from '@angular/platform-browser';
 import { IamApiService } from './app/iam/data/iam-api.service';
+import { RecoverPasswordComponent } from './app/iam/components/recover-password.component';
 import {
   IAM_PORTAL_CONTEXT,
   ShellIamApiService,
@@ -20,17 +21,31 @@ const ownedBases = new Set([
 @Component({
   selector: 'dlc-iam-portal-root',
   standalone: true,
-  imports: [IamPageComponent],
+  imports: [IamPageComponent, RecoverPasswordComponent],
+  styleUrl: './app/iam/pages/iam-page.component.css',
   template: `
     @if (route().basePath === '/login' && route().localPath === '/') {
-      <dlc-iam-page />
+      <dlc-iam-page [showRecoveryLink]="true" (recoverPassword)="requestRoute('/recover-password')" />
+    } @else if (route().basePath === '/recover-password' && route().localPath === '/') {
+      <section class="iam-auth-surface" aria-label="Recuperación de contraseña">
+        <dlc-recover-password (backToLogin)="requestRoute('/login')" />
+      </section>
     } @else {
       <section role="status"><h1>Página no encontrada</h1></section>
     }
   `,
 })
 class IamPortalRootComponent {
-  readonly route = signal(inject(IAM_PORTAL_CONTEXT).route);
+  private readonly context = inject(IAM_PORTAL_CONTEXT);
+  readonly route = signal(this.context.route);
+
+  async requestRoute(path: '/login' | '/recover-password'): Promise<void> {
+    try {
+      await this.context.navigation.request({ path });
+    } catch {
+      this.context.reportFailure({ code: 'PORTAL_TASK_FAILED' });
+    }
+  }
 }
 
 function ownsRoute(route: PortalRoute): boolean {
@@ -51,6 +66,7 @@ export async function mount(
     !context.route ||
     !ownsRoute(context.route) ||
     typeof context.http?.request !== 'function' ||
+    typeof context.navigation?.request !== 'function' ||
     typeof context.reportFailure !== 'function' ||
     !context.signal ||
     context.signal.aborted
