@@ -52,10 +52,30 @@ describe('StaffDirectoryComponent', () => {
 
   it.each([
     ['forbidden', 'No tienes permiso'],
+    ['session-expired', 'La sesión terminó'],
     ['unavailable', 'No se pudo cargar'],
   ])('shows the %s state without staff data', async (kind, message) => {
     const { host } = await render(vi.fn().mockResolvedValue({ kind }));
     expect(host.querySelector('[role="alert"]')?.textContent).toContain(message);
     expect(host.querySelector('ul')).toBeNull();
+  });
+
+  it('ignores an older page response after a newer request', async () => {
+    const initial = { data: [], meta: { page: 1, limit: 20, total: 41, totalPages: 3 } };
+    let resolveOld!: (value: unknown) => void;
+    let resolveNew!: (value: unknown) => void;
+    const list = vi.fn()
+      .mockResolvedValueOnce({ kind: 'loaded', page: initial })
+      .mockImplementationOnce(() => new Promise((resolve) => { resolveOld = resolve; }))
+      .mockImplementationOnce(() => new Promise((resolve) => { resolveNew = resolve; }));
+    const { fixture, host } = await render(list);
+    const oldRequest = fixture.componentInstance.load(2);
+    const newRequest = fixture.componentInstance.load(3);
+    resolveNew({ kind: 'loaded', page: { ...initial, meta: { ...initial.meta, page: 3 } } });
+    await newRequest;
+    resolveOld({ kind: 'loaded', page: { ...initial, meta: { ...initial.meta, page: 2 } } });
+    await oldRequest;
+    fixture.detectChanges();
+    expect(host.textContent).toContain('Página 3 de 3');
   });
 });
