@@ -85,4 +85,22 @@ describe('StaffDisableComponent', () => {
     fixture.detectChanges();
     expect(host.querySelector('[role="alert"]')?.textContent).toContain(message);
   });
+
+  it.each(['forbidden', 'session-expired', 'not-found'])(
+    'does not retry after a %s response, even if the reason changes', async (kind) => {
+      const disable = vi.fn().mockResolvedValue({ kind });
+      const { fixture, host, submit, reason } = await render(disable);
+      submit();
+      await fixture.whenStable();
+      fixture.detectChanges();
+      const button = host.querySelector<HTMLButtonElement>('button[type="submit"]');
+      expect(button?.disabled).toBe(true);
+      reason.value = 'Otro motivo';
+      reason.dispatchEvent(new Event('input', { bubbles: true }));
+      fixture.detectChanges();
+      expect(button?.disabled).toBe(true);
+      submit();
+      expect(disable).toHaveBeenCalledTimes(1);
+    },
+  );
 });
