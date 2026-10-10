@@ -1,15 +1,19 @@
 import { Component, DestroyRef, OnInit, inject, signal } from '@angular/core';
 import { StaffDirectoryService } from '../data/staff-directory.service';
 import type { Staff, StaffPage, StaffStatus } from '../model/staff';
+import { StaffCreateComponent } from './staff-create.component';
 
 @Component({
   selector: 'dlc-staff-directory',
   standalone: true,
+  imports: [StaffCreateComponent],
   styleUrl: './staff-directory.component.css',
   template: `
     <section class="directory" aria-label="Administración de personal">
       <h1>Personal</h1>
-      @if (selectedId()) {
+      @if (creating()) {
+        <dlc-staff-create (close)="closeCreate()" />
+      } @else if (selectedId()) {
         <button type="button" (click)="closeDetail()">Volver al listado</button>
         <section aria-label="Detalle de personal">
           @if (detailState() === 'loading') {
@@ -43,6 +47,7 @@ import type { Staff, StaffPage, StaffStatus } from '../model/staff';
         <p role="alert">No se pudo cargar el personal.</p>
         <button type="button" (click)="load(requestedPage)">Reintentar</button>
       } @else if (page(); as result) {
+        <button type="button" (click)="creating.set(true)">Crear personal</button>
         <p class="count">{{ result.meta.total }} registros</p>
         <ul>
           @for (member of result.data; track member.id) {
@@ -75,6 +80,7 @@ export class StaffDirectoryComponent implements OnInit {
   readonly page = signal<StaffPage | null>(null);
   readonly selectedId = signal<string | null>(null);
   readonly detail = signal<Staff | null>(null);
+  readonly creating = signal(false);
   readonly detailState = signal<'loading' | 'ready' | 'forbidden' | 'not-found' | 'session-expired' | 'error'>('loading');
   requestedPage = 1;
   private loadVersion = 0;
@@ -118,6 +124,11 @@ export class StaffDirectoryComponent implements OnInit {
     ++this.detailVersion;
     this.selectedId.set(null);
     this.detail.set(null);
+  }
+
+  closeCreate(): void {
+    this.creating.set(false);
+    void this.load(1);
   }
 
   statusLabel(status: StaffStatus): string {
