@@ -33,7 +33,7 @@
             "styles": []
           },
           "configurations": {
-            "production": { "outputHashing": "all" },
+            "production": { "browser": "src/main.production.ts", "outputHashing": "all" },
             "development": { "optimization": false, "sourceMap": true }
           },
           "defaultConfiguration": "production"
@@ -41,8 +41,19 @@
         "serve-original": {
           "builder": "@angular/build:dev-server",
           "options": { "buildTarget": "dlc-iam-portal:build-original:development", "port": 4201 }
+        },
+        "test": {
+          "builder": "@angular/build:unit-test",
+          "options": {
+            "buildTarget": "dlc-iam-portal:build-original:development",
+            "tsConfig": "tsconfig.spec.json",
+            "runner": "vitest"
+          }
         }
       }
     }
+  },
+  "cli": {
+    "analytics": false
   }
 }

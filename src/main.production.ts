@@ -1,0 +1,1 @@
+throw new Error('Standalone IAM preview cannot run in production; integrate with dlc-front.');
