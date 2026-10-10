@@ -1,6 +1,6 @@
 import { Component, DestroyRef, OnInit, inject, signal } from '@angular/core';
 import { StaffDirectoryService } from '../data/staff-directory.service';
-import type { StaffPage, StaffStatus } from '../model/staff';
+import type { Staff, StaffPage, StaffStatus } from '../model/staff';
 
 @Component({
   selector: 'dlc-staff-directory',
@@ -9,7 +9,31 @@ import type { StaffPage, StaffStatus } from '../model/staff';
   template: `
     <section class="directory" aria-label="Administración de personal">
       <h1>Personal</h1>
-      @if (state() === 'loading') {
+      @if (selectedId()) {
+        <button type="button" (click)="closeDetail()">Volver al listado</button>
+        <section aria-label="Detalle de personal">
+          @if (detailState() === 'loading') {
+            <p role="status">Cargando detalle…</p>
+          } @else if (detailState() === 'forbidden') {
+            <p role="alert">No tienes permiso para consultar este registro.</p>
+          } @else if (detailState() === 'session-expired') {
+            <p role="alert">La sesión terminó. Inicia sesión de nuevo.</p>
+          } @else if (detailState() === 'not-found') {
+            <p role="alert">El registro no está disponible.</p>
+          } @else if (detailState() === 'error') {
+            <p role="alert">No se pudo cargar el detalle.</p>
+            <button type="button" (click)="openDetail(selectedId()!)">Reintentar</button>
+          } @else if (detail(); as member) {
+            <h2>{{ member.name }}</h2>
+            <dl>
+              <div><dt>Correo</dt><dd>{{ member.email }}</dd></div>
+              <div><dt>Roles</dt><dd>{{ member.roles.join(', ') }}</dd></div>
+              <div><dt>Estado</dt><dd>{{ statusLabel(member.status) }}</dd></div>
+              <div><dt>Identificador</dt><dd>{{ member.id }}</dd></div>
+            </dl>
+          }
+        </section>
+      } @else if (state() === 'loading') {
         <p role="status">Cargando personal…</p>
       } @else if (state() === 'forbidden') {
         <p role="alert">No tienes permiso para consultar el personal.</p>
@@ -27,6 +51,7 @@ import type { StaffPage, StaffStatus } from '../model/staff';
               <span>{{ member.email }}</span>
               <span>{{ member.roles.join(', ') }}</span>
               <span class="status">{{ statusLabel(member.status) }}</span>
+              <button type="button" (click)="openDetail(member.id)">Ver detalle de {{ member.name }}</button>
             </li>
           } @empty {
             <li class="empty" role="status">No hay personal en esta página.</li>
@@ -48,8 +73,12 @@ export class StaffDirectoryComponent implements OnInit {
   private readonly destroyRef = inject(DestroyRef);
   readonly state = signal<'loading' | 'ready' | 'forbidden' | 'session-expired' | 'error'>('loading');
   readonly page = signal<StaffPage | null>(null);
+  readonly selectedId = signal<string | null>(null);
+  readonly detail = signal<Staff | null>(null);
+  readonly detailState = signal<'loading' | 'ready' | 'forbidden' | 'not-found' | 'session-expired' | 'error'>('loading');
   requestedPage = 1;
   private loadVersion = 0;
+  private detailVersion = 0;
 
   ngOnInit(): void {
     void this.load(1);
@@ -68,6 +97,27 @@ export class StaffDirectoryComponent implements OnInit {
     } else {
       this.state.set(result.kind === 'unavailable' ? 'error' : result.kind);
     }
+  }
+
+  async openDetail(id: string): Promise<void> {
+    const version = ++this.detailVersion;
+    this.selectedId.set(id);
+    this.detail.set(null);
+    this.detailState.set('loading');
+    const result = await this.directory.read(id);
+    if (this.destroyRef.destroyed || version !== this.detailVersion) return;
+    if (result.kind === 'loaded') {
+      this.detail.set(result.staff);
+      this.detailState.set('ready');
+    } else {
+      this.detailState.set(result.kind === 'unavailable' ? 'error' : result.kind);
+    }
+  }
+
+  closeDetail(): void {
+    ++this.detailVersion;
+    this.selectedId.set(null);
+    this.detail.set(null);
   }
 
   statusLabel(status: StaffStatus): string {
