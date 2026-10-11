@@ -3,3 +3,6 @@
 .sessions li { display: grid; gap: .4rem; padding: 1rem; border-bottom: 1px solid #d8dce2; }
 .sessions nav { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
 .current { font-weight: 600; color: #17644a; }
+.sessions form { display: grid; gap: .6rem; padding: .8rem; border: 1px solid #d8dce2; }
+.sessions label { display: grid; gap: .3rem; }
+.sessions textarea { width: 100%; box-sizing: border-box; }
