@@ -43,8 +43,8 @@ describe('SignInFormComponent', () => {
       login: vi.fn().mockReturnValue(throwError(() => new Error(serverMessage))),
     };
     const { fixture, host, form } = await renderForm(api);
-    const challengeReceived = vi.fn();
-    fixture.componentInstance.challenge.subscribe(challengeReceived);
+    const authenticated = vi.fn();
+    fixture.componentInstance.authenticated.subscribe(authenticated);
 
     form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
     fixture.detectChanges();
@@ -55,19 +55,14 @@ describe('SignInFormComponent', () => {
     });
     expect(host.textContent).toContain('No se pudo completar la autenticación.');
     expect(host.textContent).not.toContain(serverMessage);
-    expect(challengeReceived).not.toHaveBeenCalled();
+    expect(authenticated).not.toHaveBeenCalled();
   });
 
-  it('emits the MFA challenge after successful login', async () => {
-    const challenge = {
-      challengeId: 'a3f80675-6c3d-4f10-8d78-60ed82da53a7',
-      expiresAt: new Date(Date.now() + 5 * 60_000).toISOString(),
-      mfaRequired: true,
-    };
-    const api = { login: vi.fn().mockReturnValue(of(challenge)) };
+  it('emits authenticated after the shell completes login', async () => {
+    const api = { login: vi.fn().mockReturnValue(of(undefined)) };
     const { fixture, form } = await renderForm(api);
-    const challengeReceived = vi.fn();
-    fixture.componentInstance.challenge.subscribe(challengeReceived);
+    const authenticated = vi.fn();
+    fixture.componentInstance.authenticated.subscribe(authenticated);
 
     form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
 
@@ -75,8 +70,7 @@ describe('SignInFormComponent', () => {
       email: 'staff@example.test',
       password: 'StrongPass1',
     });
-    expect(challengeReceived).toHaveBeenCalledTimes(1);
-    expect(challengeReceived).toHaveBeenCalledWith(challenge);
+    expect(authenticated).toHaveBeenCalledTimes(1);
   });
 
   it('ignores a second submit while login is pending', async () => {
