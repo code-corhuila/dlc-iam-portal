@@ -70,6 +70,16 @@ describe('IAM portal entry', () => {
     backButton.click();
     expect(context.navigation.request).toHaveBeenCalledWith({ path: '/login' });
 
+    const resetButton = [...host.querySelectorAll<HTMLButtonElement>('dlc-recover-password .text-link')]
+      .find((button) => button.textContent?.includes('Ya tengo un código'));
+    resetButton?.click();
+    expect(context.navigation.request).toHaveBeenCalledWith({ path: '/recover-password/reset' });
+    await handle.updateRoute({
+      ...route, globalPath: '/recover-password/reset',
+      basePath: '/recover-password', localPath: '/reset',
+    });
+    expect(host.querySelector('dlc-reset-password')).not.toBeNull();
+
     await handle.updateRoute({
       ...route, globalPath: '/app/administration', basePath: '/app/administration',
     });
