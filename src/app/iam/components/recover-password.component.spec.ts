@@ -71,4 +71,13 @@ describe('RecoverPasswordComponent', () => {
     button?.click();
     expect(navigate).toHaveBeenCalledTimes(1);
   });
+
+  it('offers navigation to password reset', async () => {
+    const { fixture, host } = await render(vi.fn());
+    const reset = vi.fn();
+    fixture.componentInstance.resetPassword.subscribe(reset);
+    [...host.querySelectorAll<HTMLButtonElement>('.text-link')]
+      .find((button) => button.textContent?.includes('código de recuperación'))?.click();
+    expect(reset).toHaveBeenCalledOnce();
+  });
 });
