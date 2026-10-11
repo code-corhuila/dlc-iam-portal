@@ -135,9 +135,12 @@ describe('StaffDirectoryService', () => {
     });
   });
 
-  it('rejects disallowed, duplicate and empty roles before HTTP', async () => {
+  it('rejects disallowed, duplicate, empty and unchanged roles before HTTP', async () => {
     const { directory, request } = setup();
     expect(await directory.assignRoles(staff, [], 'Motivo')).toEqual({ kind: 'invalid' });
+    expect(await directory.assignRoles(staff, ['DENTIST'], 'Motivo')).toEqual({ kind: 'invalid' });
+    expect(await directory.assignRoles({ ...staff, roles: ['SECRETARY_ASSISTANT', 'DENTIST'] },
+      ['DENTIST', 'SECRETARY_ASSISTANT'], 'Motivo')).toEqual({ kind: 'invalid' });
     expect(await directory.assignRoles(staff, ['DENTIST', 'DENTIST'], 'Motivo'))
       .toEqual({ kind: 'invalid' });
     expect(await directory.assignRoles(staff, ['ADMINISTRATOR' as never], 'Motivo'))
