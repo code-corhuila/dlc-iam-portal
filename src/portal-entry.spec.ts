@@ -35,7 +35,7 @@ describe('IAM portal entry', () => {
         request: vi.fn().mockRejectedValue(new Error('Transport unavailable')),
       },
       reportFailure: vi.fn(),
-      iamSession: undefined,
+      iamSession: { complete: vi.fn() },
     };
   });
 

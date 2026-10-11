@@ -53,7 +53,16 @@ export interface PortalContext {
   readonly reportFailure: (
     failure: { readonly code: 'PORTAL_RENDER_FAILED' | 'PORTAL_TASK_FAILED' },
   ) => void;
-  readonly iamSession: unknown;
+  readonly iamSession: {
+    complete(input: {
+      readonly operationId: 'AuthLogin' | 'AuthVerifyMFAchallenge' |
+        'AuthConfirmMFAenrollment';
+      readonly body: unknown;
+    }): Promise<
+      | { readonly ok: true; readonly status: number; readonly data: unknown }
+      | { readonly ok: false; readonly status: number; readonly error: string }
+    >;
+  };
 }
 
 export interface PortalHandle {
