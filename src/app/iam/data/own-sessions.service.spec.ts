@@ -4,6 +4,7 @@ import { IAM_PORTAL_CONTEXT } from './shell-iam-api.service';
 import { OwnSessionsService } from './own-sessions.service';
 
 describe('OwnSessionsService', () => {
+  const key = 'b970208b-8145-49ec-967f-2f3703159c3e';
   const session = {
     id: 'a3f80675-6c3d-4f10-8d78-60ed82da53a7',
     device: 'Chrome en Windows', current: true, version: 1,
@@ -55,5 +56,41 @@ describe('OwnSessionsService', () => {
     const { service, request, controller } = setup();
     request.mockImplementation(() => { controller.abort(); return Promise.resolve({ ok: true, status: 200, data: page }); });
     expect(await service.list(1)).toEqual({ kind: 'unavailable' });
+  });
+
+  it('revokes only the requested session through shell HTTP with a retry key', async () => {
+    const { service, request, controller } = setup();
+    request.mockResolvedValue({ ok: true, status: 204 });
+    expect(await service.revoke(session.id, '  Lost device  ', key)).toEqual({ kind: 'revoked' });
+    expect(request).toHaveBeenCalledWith({
+      method: 'POST', path: `/api/v1/auth/sessions/${session.id}/revocations`,
+      body: { reason: 'Lost device' }, headers: { 'Idempotency-Key': key },
+      responseType: 'none', signal: controller.signal,
+    });
+  });
+
+  it('rejects malformed revocations without contacting Auth', async () => {
+    const { service, request } = setup();
+    expect(await service.revoke('../other', 'Lost device', key)).toEqual({ kind: 'invalid' });
+    expect(await service.revoke(session.id, ' ', key)).toEqual({ kind: 'invalid' });
+    expect(await service.revoke(session.id, 'Lost device', 'bad-key')).toEqual({ kind: 'invalid' });
+    expect(request).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    [400, 'invalid'], [401, 'session-expired'], [403, 'forbidden'],
+    [404, 'not-found'], [409, 'conflict'], [503, 'unavailable'],
+  ])('maps revocation HTTP %i to %s', async (status, kind) => {
+    const { service, request } = setup();
+    request.mockResolvedValue({ ok: false, status, message: 'Private detail' });
+    expect(await service.revoke(session.id, 'Lost device', key)).toEqual({ kind });
+  });
+
+  it('does not report a lost or unexpected revocation response as success', async () => {
+    const { service, request } = setup();
+    request.mockRejectedValueOnce(new Error('Connection lost'));
+    request.mockResolvedValueOnce({ ok: true, status: 200 });
+    expect(await service.revoke(session.id, 'Lost device', key)).toEqual({ kind: 'unavailable' });
+    expect(await service.revoke(session.id, 'Lost device', key)).toEqual({ kind: 'unavailable' });
   });
 });
