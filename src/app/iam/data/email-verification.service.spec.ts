@@ -33,10 +33,10 @@ describe('EmailVerificationService', () => {
     expect(request).not.toHaveBeenCalled();
   });
 
-  it.each([400, 409])('treats HTTP %i as an invalid token', async (status) => {
+  it.each([[400, 'invalid'], [409, 'conflict']])('maps HTTP %i to %s', async (status, kind) => {
     const { service, request } = setup();
     request.mockResolvedValue({ ok: false, status });
-    expect(await service.verify('secret-token')).toBe('invalid');
+    expect(await service.verify('secret-token')).toBe(kind);
   });
 
   it('distinguishes rate limiting from a service failure', async () => {

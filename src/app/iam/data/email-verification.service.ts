@@ -2,7 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { IAM_PORTAL_CONTEXT } from './shell-iam-api.service';
 
 export type EmailVerificationResult =
-  'verified' | 'invalid' | 'rate-limited' | 'unavailable';
+  'verified' | 'invalid' | 'conflict' | 'rate-limited' | 'unavailable';
 
 @Injectable()
 export class EmailVerificationService {
@@ -22,7 +22,8 @@ export class EmailVerificationService {
       });
       if (this.context.signal.aborted) return 'unavailable';
       if (!result.ok) {
-        return result.status === 400 || result.status === 409 ? 'invalid' :
+        return result.status === 400 ? 'invalid' :
+          result.status === 409 ? 'conflict' :
           result.status === 429 ? 'rate-limited' : 'unavailable';
       }
       const data = result.data;
