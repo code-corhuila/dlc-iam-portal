@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { IAM_PORTAL_CONTEXT } from './shell-iam-api.service';
-import type { Staff, StaffPage, StaffRole } from '../model/staff';
+import { ASSIGNABLE_STAFF_ROLES, type AssignableStaffRole, type Staff, type StaffPage } from '../model/staff';
 
 export type StaffListResult =
   | { readonly kind: 'loaded'; readonly page: StaffPage }
@@ -36,7 +36,6 @@ export type StaffEnableResult =
   | { readonly kind: 'invalid' | 'conflict' | 'forbidden' | 'not-found' |
       'session-expired' | 'unavailable' };
 
-export type AssignableStaffRole = Extract<StaffRole, 'DENTIST' | 'SECRETARY_ASSISTANT'>;
 export type StaffRolesResult =
   | { readonly kind: 'assigned'; readonly staff: Staff }
   | { readonly kind: 'invalid' | 'conflict' | 'forbidden' | 'not-found' |
@@ -88,9 +87,9 @@ export class StaffDirectoryService {
     const trimmedReason = reason.trim();
     if (!uuidPattern.test(member.id) || member.roles.includes('ADMINISTRATOR') ||
         !Number.isInteger(member.version) || member.version < 1 ||
-        rolesToAssign.length < 1 || rolesToAssign.length > 2 ||
+        rolesToAssign.length < 1 || rolesToAssign.length > ASSIGNABLE_STAFF_ROLES.length ||
         new Set(rolesToAssign).size !== rolesToAssign.length ||
-        rolesToAssign.some((role) => role !== 'DENTIST' && role !== 'SECRETARY_ASSISTANT') ||
+        rolesToAssign.some((role) => !ASSIGNABLE_STAFF_ROLES.some((option) => option.value === role)) ||
         !trimmedReason || trimmedReason.length > 1000) return { kind: 'invalid' };
     if (this.context.signal.aborted) return { kind: 'unavailable' };
     try {
