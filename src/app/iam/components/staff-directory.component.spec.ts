@@ -4,10 +4,11 @@ import { StaffDirectoryService } from '../data/staff-directory.service';
 import { StaffDirectoryComponent } from './staff-directory.component';
 
 describe('StaffDirectoryComponent', () => {
-  async function render(list: ReturnType<typeof vi.fn>, read = vi.fn(), updateName = vi.fn()) {
+  async function render(list: ReturnType<typeof vi.fn>, read = vi.fn(),
+    updateName = vi.fn(), disable = vi.fn()) {
     await TestBed.configureTestingModule({
       imports: [StaffDirectoryComponent],
-      providers: [{ provide: StaffDirectoryService, useValue: { list, read, updateName } }],
+      providers: [{ provide: StaffDirectoryService, useValue: { list, read, updateName, disable } }],
     }).compileComponents();
     const fixture = TestBed.createComponent(StaffDirectoryComponent);
     fixture.detectChanges();
@@ -132,6 +133,45 @@ describe('StaffDirectoryComponent', () => {
     host.querySelector<HTMLButtonElement>('section.directory > button')?.click();
     fixture.detectChanges();
     expect(host.querySelector('li strong')?.textContent).toContain('Ana Pérez');
+  });
+
+  it('updates the detail and list after Auth disables a staff member', async () => {
+    const member = {
+      id: 'a3f80675-6c3d-4f10-8d78-60ed82da53a7',
+      name: 'Ana', email: 'ana@example.test', roles: ['DENTIST'],
+      status: 'ACTIVE', version: 2,
+    };
+    const page = { data: [member], meta: { page: 1, limit: 20, total: 1, totalPages: 1 } };
+    const disabled = { ...member, status: 'DISABLED', version: 3 };
+    const disable = vi.fn().mockResolvedValue({ kind: 'disabled', staff: disabled });
+    const { fixture, host } = await render(
+      vi.fn().mockResolvedValue({ kind: 'loaded', page }),
+      vi.fn().mockResolvedValue({ kind: 'loaded', staff: member }), vi.fn(), disable,
+    );
+    host.querySelector<HTMLButtonElement>('li button')?.click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const disableButton = [...host.querySelectorAll<HTMLButtonElement>('button')]
+      .find((button) => button.textContent?.includes('Deshabilitar personal'));
+    disableButton?.click();
+    fixture.detectChanges();
+    const form = host.querySelector('dlc-staff-disable form');
+    const reason = form?.querySelector<HTMLTextAreaElement>('textarea[name="reason"]');
+    if (!form || !reason) throw new Error('Disabling form is missing');
+    reason.value = 'Baja solicitada';
+    form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(disable).toHaveBeenCalledWith(expect.objectContaining({ id: member.id }),
+      'Baja solicitada', expect.any(String));
+    expect(host.querySelector('dlc-staff-disable')).toBeNull();
+    expect(host.querySelector('section[aria-label="Detalle de personal"]')?.textContent)
+      .toContain('Deshabilitado');
+    expect([...host.querySelectorAll<HTMLButtonElement>('button')]
+      .some((button) => button.textContent?.includes('Deshabilitar personal'))).toBe(false);
+    host.querySelector<HTMLButtonElement>('section.directory > button')?.click();
+    fixture.detectChanges();
+    expect(host.querySelector('li')?.textContent).toContain('Deshabilitado');
   });
 
   it('does not show a detail that arrives after returning to the list', async () => {
