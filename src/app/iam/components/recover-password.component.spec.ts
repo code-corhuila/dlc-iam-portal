@@ -61,4 +61,13 @@ describe('RecoverPasswordComponent', () => {
     expect(host.querySelector<HTMLButtonElement>('button[type="submit"]')?.disabled)
       .toBe(true);
   });
+
+  it('offers the reset route without placing a proof in the URL', async () => {
+    const { fixture, host } = await render(vi.fn());
+    const reset = vi.fn();
+    fixture.componentInstance.resetPassword.subscribe(reset);
+    [...host.querySelectorAll<HTMLButtonElement>('.text-link')]
+      .find((button) => button.textContent?.includes('Ya tengo un código'))?.click();
+    expect(reset).toHaveBeenCalledOnce();
+  });
 });
