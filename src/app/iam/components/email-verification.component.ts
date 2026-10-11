@@ -49,7 +49,7 @@ export class EmailVerificationComponent {
   readonly token = signal('');
   readonly state = signal<State>('editing');
   readonly submitBlocked = () => this.state() === 'saving' || this.state() === 'conflict' ||
-    this.state() === 'rate-limited' || this.state() === 'unavailable';
+    this.state() === 'unavailable';
 
   async submit(event: Event): Promise<void> {
     event.preventDefault();
