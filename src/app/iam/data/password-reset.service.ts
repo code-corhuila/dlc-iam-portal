@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { IAM_PORTAL_CONTEXT } from './shell-iam-api.service';
 
-export type PasswordResetResult = 'reset' | 'invalid' | 'rate-limited' | 'unavailable';
+export type PasswordResetResult = 'reset' | 'invalid' | 'rejected' | 'rate-limited' | 'unavailable';
 
 @Injectable()
 export class PasswordResetService {
@@ -9,6 +9,7 @@ export class PasswordResetService {
 
   async reset(token: string, password: string): Promise<PasswordResetResult> {
     const proof = token.trim();
+    // Mirrors the Auth policy in 07-api/authentication.md; Auth remains authoritative.
     if (!proof || !password || password.length < 8 || password.length > 72 ||
         new TextEncoder().encode(password).length > 72 ||
         !/[A-Z]/.test(password) || !/[0-9]/.test(password)) return 'invalid';
@@ -21,7 +22,7 @@ export class PasswordResetService {
       });
       if (this.context.signal.aborted) return 'unavailable';
       if (!result.ok) {
-        return result.status === 400 || result.status === 409 ? 'invalid' :
+        return result.status === 400 || result.status === 409 ? 'rejected' :
           result.status === 429 ? 'rate-limited' : 'unavailable';
       }
       const data = result.data;
