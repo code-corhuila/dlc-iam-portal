@@ -1,7 +1,6 @@
 import { Component, EventEmitter, Input, Output, inject, DestroyRef } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { IamApiService } from '../data/iam-api.service';
-import { MfaChallenge } from '../model/auth';
 
 @Component({
   selector: 'dlc-sign-in-form',
@@ -49,7 +48,7 @@ export class SignInFormComponent {
   private readonly api = inject(IamApiService);
   private readonly destroyRef = inject(DestroyRef);
 
-  @Output() readonly challenge = new EventEmitter<MfaChallenge>();
+  @Output() readonly authenticated = new EventEmitter<void>();
   @Output() readonly recoverPassword = new EventEmitter<void>();
   @Input() showRecoveryLink = false;
 
@@ -68,7 +67,7 @@ export class SignInFormComponent {
     this.api.login({ email: this.email, password: this.password })
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
-        next: (challenge) => this.challenge.emit(challenge),
+        next: () => this.authenticated.emit(),
         error: () => {
           this.loading = false;
           this.errorMessage = 'No se pudo completar la autenticación.';
