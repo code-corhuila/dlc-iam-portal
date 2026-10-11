@@ -54,13 +54,28 @@ describe('ResetPasswordComponent', () => {
     expect(host.querySelector('[role="alert"]')).not.toBeNull();
   });
 
-  it('shows a generic failure without rendering backend details or the token', async () => {
+  it('blocks retry when a lost response leaves the reset outcome uncertain', async () => {
     const reset = vi.fn().mockResolvedValue('unavailable');
     const { fixture, host, submit } = await render(reset);
     submit();
     await fixture.whenStable();
     fixture.detectChanges();
-    expect(host.querySelector('[role="alert"]')?.textContent).toContain('No se pudo');
+    expect(host.querySelector('[role="alert"]')?.textContent).toContain('No pudimos confirmar');
+    expect(host.querySelector('[role="alert"]')?.textContent).toContain('iniciar sesión');
+    expect(host.querySelector<HTMLButtonElement>('button[type="submit"]')?.disabled).toBe(true);
+    submit();
+    expect(reset).toHaveBeenCalledTimes(1);
     expect(host.textContent).not.toContain('proof-123');
+  });
+
+  it('does not describe a consumed token as a weak password', async () => {
+    const reset = vi.fn().mockResolvedValue('rejected');
+    const { fixture, host, submit } = await render(reset);
+    submit();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(host.querySelector('[role="alert"]')?.textContent).toContain('No se aceptó');
+    expect(host.querySelector('[role="alert"]')?.textContent).toContain('iniciar sesión');
+    expect(host.querySelector('[role="alert"]')?.textContent).not.toContain('mínimo 8');
   });
 });

@@ -36,7 +36,7 @@ describe('PasswordResetService', () => {
   });
 
   it.each([
-    [400, 'invalid'], [409, 'invalid'], [429, 'rate-limited'], [503, 'unavailable'],
+    [400, 'rejected'], [409, 'rejected'], [429, 'rate-limited'], [503, 'unavailable'],
   ])('maps Auth %i without exposing its message', async (status, expected) => {
     const { service, request } = setup();
     request.mockResolvedValue({ ok: false, status, message: 'Sensitive backend detail' });

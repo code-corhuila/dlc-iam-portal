@@ -15,22 +15,24 @@ import { PasswordResetService } from '../data/password-reset.service';
         <form (submit)="submit($event)">
           <label for="iam-reset-token">Código de recuperación</label>
           <input id="iam-reset-token" name="token" type="text" autocomplete="off" required
-            [disabled]="state() === 'saving'" />
+            [disabled]="submitBlocked()" />
           <label for="iam-reset-password">Contraseña nueva</label>
           <input id="iam-reset-password" name="password" type="password"
             autocomplete="new-password" minlength="8" maxlength="72" required
-            [disabled]="state() === 'saving'" />
+            [disabled]="submitBlocked()" />
           <label for="iam-reset-confirm">Confirmar contraseña</label>
           <input id="iam-reset-confirm" name="confirmation" type="password"
             autocomplete="new-password" minlength="8" maxlength="72" required
-            [disabled]="state() === 'saving'" />
-          <button type="submit" [disabled]="state() === 'saving'">Guardar contraseña</button>
+            [disabled]="submitBlocked()" />
+          <button type="submit" [disabled]="submitBlocked()">Guardar contraseña</button>
           @if (state() === 'invalid') {
             <p role="alert">Verifica el código y la contraseña: mínimo 8 caracteres, una mayúscula y un número.</p>
+          } @else if (state() === 'rejected') {
+            <p role="alert">No se aceptó el código o la contraseña. Si ya enviaste esta solicitud, prueba iniciar sesión con la nueva contraseña; si no funciona, solicita otro código.</p>
           } @else if (state() === 'rate-limited') {
-            <p role="alert">Hay demasiados intentos. Espera antes de volver a intentar.</p>
+            <p role="alert">Hay demasiados intentos. Solicita otro código más tarde.</p>
           } @else if (state() === 'error') {
-            <p role="alert">No se pudo restablecer la contraseña. Inténtalo de nuevo.</p>
+            <p role="alert">No pudimos confirmar si se actualizó la contraseña. Prueba iniciar sesión con la nueva contraseña; si no funciona, solicita otro código.</p>
           }
         </form>
       }
@@ -48,11 +50,13 @@ export class ResetPasswordComponent {
   private readonly destroyRef = inject(DestroyRef);
   readonly backToRecovery = output<void>();
   readonly backToLogin = output<void>();
-  readonly state = signal<'editing' | 'saving' | 'done' | 'invalid' | 'rate-limited' | 'error'>('editing');
+  readonly state = signal<'editing' | 'saving' | 'done' | 'invalid' | 'rejected' | 'rate-limited' | 'error'>('editing');
+  readonly submitBlocked = () =>
+    this.state() === 'saving' || this.state() === 'rate-limited' || this.state() === 'error';
 
   async submit(event: Event): Promise<void> {
     event.preventDefault();
-    if (this.state() === 'saving' || this.state() === 'done') return;
+    if (this.submitBlocked() || this.state() === 'done') return;
     const form = event.currentTarget as HTMLFormElement;
     if (!form.checkValidity()) return;
     const fields = new FormData(form);
