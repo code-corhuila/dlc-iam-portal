@@ -5,6 +5,8 @@ import { RecoverPasswordComponent } from './app/iam/components/recover-password.
 import { EmailVerificationComponent } from './app/iam/components/email-verification.component';
 import { EmailVerificationService } from './app/iam/data/email-verification.service';
 import { ResetPasswordComponent } from './app/iam/components/reset-password.component';
+import { OwnSessionsComponent } from './app/iam/components/own-sessions.component';
+import { OwnSessionsService } from './app/iam/data/own-sessions.service';
 import { StaffDirectoryComponent } from './app/iam/components/staff-directory.component';
 import { StaffDirectoryService } from './app/iam/data/staff-directory.service';
 import { PasswordResetService } from './app/iam/data/password-reset.service';
@@ -21,6 +23,7 @@ export const contractVersion = 1 as const;
 const ownedBases = new Set([
   '/login',
   '/recover-password',
+  '/app/sessions',
   '/app/administration',
 ]);
 
@@ -28,7 +31,7 @@ const ownedBases = new Set([
   selector: 'dlc-iam-portal-root',
   standalone: true,
   imports: [IamPageComponent, RecoverPasswordComponent, EmailVerificationComponent,
-    ResetPasswordComponent, StaffDirectoryComponent],
+    ResetPasswordComponent, OwnSessionsComponent, StaffDirectoryComponent],
   styleUrl: './app/iam/pages/iam-page.component.css',
   template: `
     @if (route().basePath === '/login' && route().localPath === '/') {
@@ -48,6 +51,8 @@ const ownedBases = new Set([
         <dlc-reset-password (backToRecovery)="requestRoute('/recover-password')"
           (backToLogin)="requestRoute('/login')" />
       </section>
+    } @else if (route().basePath === '/app/sessions' && route().localPath === '/') {
+      <dlc-own-sessions />
     } @else if (route().basePath === '/app/administration' && route().localPath === '/') {
       <dlc-staff-directory />
     } @else {
@@ -101,6 +106,7 @@ export async function mount(
       { provide: IamApiService, useClass: ShellIamApiService },
       EmailVerificationService,
       PasswordResetService,
+      OwnSessionsService,
       StaffDirectoryService,
       {
         provide: ErrorHandler,
