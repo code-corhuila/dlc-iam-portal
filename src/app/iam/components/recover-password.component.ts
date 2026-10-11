@@ -33,6 +33,9 @@ import { IamApiService } from '../data/iam-api.service';
       <button type="button" class="text-link" (click)="backToLogin.emit()">
         Volver a iniciar sesión
       </button>
+      <button type="button" class="text-link" (click)="resetPassword.emit()">
+        Ya tengo un código de recuperación
+      </button>
     </div>
   `,
 })
@@ -41,6 +44,7 @@ export class RecoverPasswordComponent {
   private readonly destroyRef = inject(DestroyRef);
 
   @Output() readonly backToLogin = new EventEmitter<void>();
+  @Output() readonly resetPassword = new EventEmitter<void>();
   email = '';
   loading = false;
   submitted = false;
