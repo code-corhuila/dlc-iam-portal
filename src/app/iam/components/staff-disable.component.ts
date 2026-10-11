@@ -51,11 +51,15 @@ export class StaffDisableComponent implements OnChanges {
   readonly terminalResponse = computed(() => this.state() === 'forbidden' ||
     this.state() === 'session-expired' || this.state() === 'not-found');
   readonly submitBlocked = computed(() =>
-    this.state() === 'saving' || this.state() === 'conflict' || this.terminalResponse());
+    this.state() !== 'editing' && this.state() !== 'invalid' && this.state() !== 'error');
   private idempotencyKey: string | null = null;
 
   ngOnChanges(changes: SimpleChanges): void {
-    if (changes['member'] && !changes['member'].firstChange) {
+    const change = changes['member'];
+    if (change && !change.firstChange &&
+      (this.state() === 'conflict' || !this.submitBlocked()) &&
+      (change.previousValue?.id !== change.currentValue?.id ||
+        change.previousValue?.version !== change.currentValue?.version)) {
       this.idempotencyKey = null;
       this.state.set('editing');
     }
