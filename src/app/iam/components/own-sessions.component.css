@@ -1,0 +1,5 @@
+.sessions { max-width: 48rem; margin: 2rem auto; padding: 1.5rem; }
+.sessions ul { list-style: none; padding: 0; }
+.sessions li { display: grid; gap: .4rem; padding: 1rem; border-bottom: 1px solid #d8dce2; }
+.sessions nav { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+.current { font-weight: 600; color: #17644a; }
