@@ -5,11 +5,12 @@ import { StaffDirectoryComponent } from './staff-directory.component';
 
 describe('StaffDirectoryComponent', () => {
   async function render(list: ReturnType<typeof vi.fn>, read = vi.fn(),
-    updateName = vi.fn(), disable = vi.fn(), enable = vi.fn(), assignRoles = vi.fn()) {
+    updateName = vi.fn(), disable = vi.fn(), enable = vi.fn(), assignRoles = vi.fn(),
+    unlock = vi.fn()) {
     await TestBed.configureTestingModule({
       imports: [StaffDirectoryComponent],
       providers: [{ provide: StaffDirectoryService,
-        useValue: { list, read, updateName, disable, enable, assignRoles } }],
+        useValue: { list, read, updateName, disable, enable, assignRoles, unlock } }],
     }).compileComponents();
     const fixture = TestBed.createComponent(StaffDirectoryComponent);
     fixture.detectChanges();
@@ -210,6 +211,42 @@ describe('StaffDirectoryComponent', () => {
     host.querySelector<HTMLButtonElement>('section.directory > button')?.click();
     fixture.detectChanges();
     expect(host.querySelector('li')?.textContent).toContain('Pendiente de verificación');
+  });
+
+  it('offers unlock only for locked staff and updates the detail after Auth confirms it', async () => {
+    const member = {
+      id: 'a3f80675-6c3d-4f10-8d78-60ed82da53a7',
+      name: 'Ana', email: 'ana@example.test', roles: ['DENTIST'],
+      status: 'LOCKED', version: 2,
+    };
+    const page = { data: [member], meta: { page: 1, limit: 20, total: 1, totalPages: 1 } };
+    const active = { ...member, status: 'ACTIVE', version: 3 };
+    const unlock = vi.fn().mockResolvedValue({ kind: 'unlocked', staff: active });
+    const { fixture, host } = await render(
+      vi.fn().mockResolvedValue({ kind: 'loaded', page }),
+      vi.fn().mockResolvedValue({ kind: 'loaded', staff: member }),
+      vi.fn(), vi.fn(), vi.fn(), vi.fn(), unlock,
+    );
+    host.querySelector<HTMLButtonElement>('li button')?.click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    [...host.querySelectorAll<HTMLButtonElement>('button')]
+      .find((button) => button.textContent?.includes('Desbloquear personal'))?.click();
+    fixture.detectChanges();
+    const form = host.querySelector('dlc-staff-unlock form');
+    const reason = form?.querySelector<HTMLTextAreaElement>('textarea[name="reason"]');
+    if (!form || !reason) throw new Error('Unlock form is missing');
+    reason.value = 'Identidad confirmada';
+    form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(unlock).toHaveBeenCalledWith(expect.objectContaining({ id: member.id }),
+      'Identidad confirmada', expect.any(String));
+    expect(host.querySelector('dlc-staff-unlock')).toBeNull();
+    expect(host.querySelector('section[aria-label="Detalle de personal"]')?.textContent)
+      .toContain('Activo');
+    expect([...host.querySelectorAll<HTMLButtonElement>('button')]
+      .some((button) => button.textContent?.includes('Desbloquear personal'))).toBe(false);
   });
 
   it('updates the detail and list after Auth replaces staff roles', async () => {
