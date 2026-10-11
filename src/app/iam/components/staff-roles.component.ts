@@ -1,6 +1,6 @@
 import { Component, DestroyRef, inject, input, output, signal } from '@angular/core';
-import { StaffDirectoryService, type AssignableStaffRole } from '../data/staff-directory.service';
-import type { Staff } from '../model/staff';
+import { StaffDirectoryService } from '../data/staff-directory.service';
+import { ASSIGNABLE_STAFF_ROLES, type AssignableStaffRole, type Staff } from '../model/staff';
 
 @Component({
   selector: 'dlc-staff-roles',
@@ -12,10 +12,10 @@ import type { Staff } from '../model/staff';
       <p>Auth verificará los permisos y revocará las sesiones anteriores si cambia los roles.</p>
       <fieldset [disabled]="state() === 'saving'">
         <legend>Roles permitidos</legend>
-        <label><input type="checkbox" name="roles" value="DENTIST"
-          [checked]="member().roles.includes('DENTIST')" /> Odontólogo</label>
-        <label><input type="checkbox" name="roles" value="SECRETARY_ASSISTANT"
-          [checked]="member().roles.includes('SECRETARY_ASSISTANT')" /> Secretario auxiliar</label>
+        @for (role of assignableRoles; track role.value) {
+          <label><input type="checkbox" name="roles" [value]="role.value"
+            [checked]="member().roles.includes(role.value)" /> {{ role.label }}</label>
+        }
       </fieldset>
       <label>Motivo
         <textarea name="reason" required maxlength="1000" rows="3"
@@ -49,6 +49,7 @@ import type { Staff } from '../model/staff';
 export class StaffRolesComponent {
   private readonly directory = inject(StaffDirectoryService);
   private readonly destroyRef = inject(DestroyRef);
+  readonly assignableRoles = ASSIGNABLE_STAFF_ROLES;
   readonly member = input.required<Staff>();
   readonly saved = output<Staff>();
   readonly cancel = output<void>();
