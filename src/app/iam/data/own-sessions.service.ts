@@ -6,6 +6,11 @@ export type OwnSessionsResult =
   | { readonly kind: 'loaded'; readonly page: OwnSessionPage }
   | { readonly kind: 'invalid' | 'forbidden' | 'session-expired' | 'unavailable' };
 
+export type OwnSessionRevokeResult =
+  | { readonly kind: 'revoked' }
+  | { readonly kind: 'invalid' | 'forbidden' | 'not-found' | 'conflict' |
+      'session-expired' | 'unavailable' };
+
 const pageLimit = 20;
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const sessionKeys = new Set([
@@ -45,6 +50,31 @@ function isPage(value: unknown): value is OwnSessionPage {
 @Injectable()
 export class OwnSessionsService {
   private readonly context = inject(IAM_PORTAL_CONTEXT);
+
+  async revoke(id: string, reason: string, key: string): Promise<OwnSessionRevokeResult> {
+    const trimmedReason = reason.trim();
+    if (!uuidPattern.test(id) || !uuidPattern.test(key) ||
+        !trimmedReason || trimmedReason.length > 1000) return { kind: 'invalid' };
+    if (this.context.signal.aborted) return { kind: 'unavailable' };
+    try {
+      const result = await this.context.http.request({
+        method: 'POST', path: `/api/v1/auth/sessions/${id}/revocations`,
+        body: { reason: trimmedReason }, headers: { 'Idempotency-Key': key },
+        responseType: 'none', signal: this.context.signal,
+      });
+      if (this.context.signal.aborted) return { kind: 'unavailable' };
+      if (!result.ok) {
+        return { kind: result.status === 400 ? 'invalid' :
+          result.status === 401 ? 'session-expired' :
+          result.status === 403 ? 'forbidden' :
+          result.status === 404 ? 'not-found' :
+          result.status === 409 ? 'conflict' : 'unavailable' };
+      }
+      return result.status === 204 ? { kind: 'revoked' } : { kind: 'unavailable' };
+    } catch {
+      return { kind: 'unavailable' };
+    }
+  }
 
   async list(page: number): Promise<OwnSessionsResult> {
     if (!Number.isInteger(page) || page < 1) return { kind: 'invalid' };
