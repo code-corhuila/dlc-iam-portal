@@ -60,4 +60,20 @@ describe('EmailVerificationComponent', () => {
     form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
     expect(verify).toHaveBeenCalledTimes(1);
   });
+
+  it.each([
+    ['conflict', 'Si ya verificaste'],
+    ['unavailable', 'No pudimos confirmar'],
+  ])('blocks a second submission after %s', async (result, message) => {
+    const verify = vi.fn().mockResolvedValue(result);
+    const { fixture, host, form } = await render(verify);
+    form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(host.querySelector('[role="alert"]')?.textContent).toContain(message);
+    expect(host.querySelector<HTMLButtonElement>('button[type="submit"]')?.disabled).toBe(true);
+    expect(fixture.componentInstance.token()).toBe('');
+    form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    expect(verify).toHaveBeenCalledTimes(1);
+  });
 });
