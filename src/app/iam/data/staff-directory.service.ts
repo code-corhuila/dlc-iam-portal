@@ -90,6 +90,8 @@ export class StaffDirectoryService {
         rolesToAssign.length < 1 || rolesToAssign.length > ASSIGNABLE_STAFF_ROLES.length ||
         new Set(rolesToAssign).size !== rolesToAssign.length ||
         rolesToAssign.some((role) => !ASSIGNABLE_STAFF_ROLES.some((option) => option.value === role)) ||
+        (rolesToAssign.length === member.roles.length &&
+          rolesToAssign.every((role) => member.roles.includes(role))) ||
         !trimmedReason || trimmedReason.length > 1000) return { kind: 'invalid' };
     if (this.context.signal.aborted) return { kind: 'unavailable' };
     try {
