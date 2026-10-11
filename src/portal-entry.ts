@@ -3,6 +3,8 @@ import { createApplication } from '@angular/platform-browser';
 import { IamApiService } from './app/iam/data/iam-api.service';
 import { RecoverPasswordComponent } from './app/iam/components/recover-password.component';
 import { ResetPasswordComponent } from './app/iam/components/reset-password.component';
+import { EmailVerificationComponent } from './app/iam/components/email-verification.component';
+import { EmailVerificationService } from './app/iam/data/email-verification.service';
 import { StaffDirectoryComponent } from './app/iam/components/staff-directory.component';
 import { StaffDirectoryService } from './app/iam/data/staff-directory.service';
 import { PasswordResetService } from './app/iam/data/password-reset.service';
@@ -25,7 +27,10 @@ const ownedBases = new Set([
 @Component({
   selector: 'dlc-iam-portal-root',
   standalone: true,
-  imports: [IamPageComponent, RecoverPasswordComponent, ResetPasswordComponent, StaffDirectoryComponent],
+  imports: [
+    IamPageComponent, RecoverPasswordComponent, ResetPasswordComponent,
+    EmailVerificationComponent, StaffDirectoryComponent,
+  ],
   styleUrl: './app/iam/pages/iam-page.component.css',
   template: `
     @if (route().basePath === '/login' && route().localPath === '/') {
@@ -33,12 +38,16 @@ const ownedBases = new Set([
     } @else if (route().basePath === '/recover-password' && route().localPath === '/') {
       <section class="iam-auth-surface" aria-label="Recuperación de contraseña">
         <dlc-recover-password (backToLogin)="requestRoute('/login')"
-          (resetPassword)="requestRoute('/recover-password/reset')" />
+          (resetPassword)="requestRoute('/recover-password/reset')"
+          (verifyEmail)="requestRoute('/recover-password/verify-email')" />
       </section>
     } @else if (route().basePath === '/recover-password' && route().localPath === '/reset') {
       <section class="iam-auth-surface" aria-label="Restablecimiento de contraseña">
         <dlc-reset-password (backToRecovery)="requestRoute('/recover-password')"
           (backToLogin)="requestRoute('/login')" />
+    } @else if (route().basePath === '/recover-password' && route().localPath === '/verify-email') {
+      <section class="iam-auth-surface" aria-label="Verificación de correo">
+        <dlc-email-verification (backToLogin)="requestRoute('/login')" />
       </section>
     } @else if (route().basePath === '/app/administration' && route().localPath === '/') {
       <dlc-staff-directory />
@@ -51,7 +60,8 @@ class IamPortalRootComponent {
   private readonly context = inject(IAM_PORTAL_CONTEXT);
   readonly route = signal(this.context.route);
 
-  async requestRoute(path: '/login' | '/recover-password' | '/recover-password/reset'): Promise<void> {
+  async requestRoute(path: '/login' | '/recover-password' |
+    '/recover-password/reset' | '/recover-password/verify-email'): Promise<void> {
     try {
       await this.context.navigation.request({ path });
     } catch {
@@ -91,6 +101,7 @@ export async function mount(
       { provide: IAM_PORTAL_CONTEXT, useValue: context },
       { provide: IamApiService, useClass: ShellIamApiService },
       PasswordResetService,
+      EmailVerificationService,
       StaffDirectoryService,
       {
         provide: ErrorHandler,
