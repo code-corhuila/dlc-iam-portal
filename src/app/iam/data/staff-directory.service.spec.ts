@@ -240,9 +240,9 @@ describe('StaffDirectoryService', () => {
   it('rejects invalid unlocks and does not trust a stale or private Auth response', async () => {
     const { directory, request } = setup();
     const locked = { ...staff, status: 'LOCKED' as const };
-    expect(await directory.unlock(staff, 'Motivo', key)).toEqual({ kind: 'invalid' });
+    expect(await directory.unlock(staff, 'Motivo', key)).toEqual({ kind: 'invalid-record' });
     expect(await directory.unlock(locked, ' ', key)).toEqual({ kind: 'invalid' });
-    expect(await directory.unlock(locked, 'Motivo', 'bad-key')).toEqual({ kind: 'invalid' });
+    expect(await directory.unlock(locked, 'Motivo', 'bad-key')).toEqual({ kind: 'invalid-key' });
     expect(request).not.toHaveBeenCalled();
     request.mockResolvedValueOnce({ ok: true, status: 200,
       data: { ...staff, version: 2, passwordHash: 'secret' } });

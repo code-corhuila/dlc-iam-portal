@@ -82,4 +82,20 @@ describe('StaffUnlockComponent', () => {
       expect(unlock).toHaveBeenCalledTimes(1);
     },
   );
+
+  it.each([
+    ['invalid', 'Escribe un motivo válido.'],
+    ['invalid-record', 'El registro no está listo para desbloquearse.'],
+    ['invalid-key', 'No se pudo preparar la solicitud.'],
+  ] as const)('explains %s without blaming another cause', async (kind, message) => {
+    const unlock = vi.fn().mockResolvedValue({ kind });
+    const { fixture, host, submit } = await render(unlock);
+    submit();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(host.querySelector('[role="alert"]')?.textContent).toContain(message);
+    if (kind !== 'invalid') {
+      expect(host.querySelector<HTMLButtonElement>('button[type="submit"]')?.disabled).toBe(true);
+    }
+  });
 });

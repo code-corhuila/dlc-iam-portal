@@ -22,6 +22,10 @@ import type { Staff } from '../model/staff';
         <p role="status">Desbloqueando personal…</p>
       } @else if (state() === 'invalid') {
         <p role="alert">Escribe un motivo válido.</p>
+      } @else if (state() === 'invalid-record') {
+        <p role="alert">El registro no está listo para desbloquearse. Cierra el formulario y vuelve a consultar el detalle.</p>
+      } @else if (state() === 'invalid-key') {
+        <p role="alert">No se pudo preparar la solicitud. Cierra el formulario y vuelve a abrirlo.</p>
       } @else if (state() === 'conflict') {
         <p role="alert">Este registro cambió. Consúltalo de nuevo antes de desbloquear.</p>
         <button type="button" (click)="refreshRecord()">Recargar registro</button>
@@ -44,7 +48,8 @@ export class StaffUnlockComponent implements OnChanges {
   readonly saved = output<Staff>();
   readonly cancel = output<void>();
   readonly refresh = output<void>();
-  readonly state = signal<'editing' | 'saving' | 'invalid' | 'conflict' | 'forbidden' |
+  readonly state = signal<'editing' | 'saving' | 'invalid' | 'invalid-record' | 'invalid-key' |
+    'conflict' | 'forbidden' |
     'session-expired' | 'not-found' | 'error'>('editing');
   readonly submitBlocked = computed(() =>
     this.state() !== 'editing' && this.state() !== 'invalid' && this.state() !== 'error');

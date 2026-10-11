@@ -38,7 +38,7 @@ export type StaffEnableResult =
 
 export type StaffUnlockResult =
   | { readonly kind: 'unlocked'; readonly staff: Staff }
-  | { readonly kind: 'invalid' | 'conflict' | 'forbidden' | 'not-found' |
+  | { readonly kind: 'invalid' | 'invalid-record' | 'invalid-key' | 'conflict' | 'forbidden' | 'not-found' |
       'session-expired' | 'unavailable' };
 
 export type StaffRolesResult =
@@ -89,9 +89,9 @@ export class StaffDirectoryService {
   async unlock(member: Staff, reason: string, key: string): Promise<StaffUnlockResult> {
     const trimmedReason = reason.trim();
     if (!uuidPattern.test(member.id) || member.status !== 'LOCKED' ||
-        !Number.isInteger(member.version) || member.version < 1 ||
-        !trimmedReason || trimmedReason.length > 1000 ||
-        !uuidPattern.test(key)) return { kind: 'invalid' };
+        !Number.isInteger(member.version) || member.version < 1) return { kind: 'invalid-record' };
+    if (!trimmedReason || trimmedReason.length > 1000) return { kind: 'invalid' };
+    if (!uuidPattern.test(key)) return { kind: 'invalid-key' };
     if (this.context.signal.aborted) return { kind: 'unavailable' };
     try {
       const result = await this.context.http.request({
