@@ -1,0 +1,9 @@
+:host { display: block; max-width: 560px; margin: 16px 0; }
+form { display: grid; gap: 12px; padding: 18px; background: #fff; border: 1px solid #dbe5e7; border-radius: 8px; }
+label { display: grid; gap: 6px; font-weight: 600; }
+textarea { box-sizing: border-box; width: 100%; padding: 10px; border: 1px solid #aebfc2; border-radius: 5px; font: inherit; }
+.actions { display: flex; gap: 10px; flex-wrap: wrap; }
+button { padding: 8px 14px; border: 1px solid #9e2525; border-radius: 5px; background: #fff; color: #9e2525; cursor: pointer; }
+button[type='submit'] { background: #9e2525; color: #fff; }
+button:disabled { opacity: .55; cursor: default; }
+[role='alert'] { color: #9e2525; }
