@@ -2,6 +2,8 @@ import { Component, ErrorHandler, inject, signal } from '@angular/core';
 import { createApplication } from '@angular/platform-browser';
 import { IamApiService } from './app/iam/data/iam-api.service';
 import { RecoverPasswordComponent } from './app/iam/components/recover-password.component';
+import { EmailVerificationComponent } from './app/iam/components/email-verification.component';
+import { EmailVerificationService } from './app/iam/data/email-verification.service';
 import { StaffDirectoryComponent } from './app/iam/components/staff-directory.component';
 import { StaffDirectoryService } from './app/iam/data/staff-directory.service';
 import {
@@ -23,14 +25,19 @@ const ownedBases = new Set([
 @Component({
   selector: 'dlc-iam-portal-root',
   standalone: true,
-  imports: [IamPageComponent, RecoverPasswordComponent, StaffDirectoryComponent],
+  imports: [IamPageComponent, RecoverPasswordComponent, EmailVerificationComponent, StaffDirectoryComponent],
   styleUrl: './app/iam/pages/iam-page.component.css',
   template: `
     @if (route().basePath === '/login' && route().localPath === '/') {
       <dlc-iam-page [showRecoveryLink]="true" (recoverPassword)="requestRoute('/recover-password')" />
     } @else if (route().basePath === '/recover-password' && route().localPath === '/') {
       <section class="iam-auth-surface" aria-label="Recuperación de contraseña">
-        <dlc-recover-password (backToLogin)="requestRoute('/login')" />
+        <dlc-recover-password (backToLogin)="requestRoute('/login')"
+          (verifyEmail)="requestRoute('/recover-password/verify-email')" />
+      </section>
+    } @else if (route().basePath === '/recover-password' && route().localPath === '/verify-email') {
+      <section class="iam-auth-surface" aria-label="Verificación de correo">
+        <dlc-email-verification (backToLogin)="requestRoute('/login')" />
       </section>
     } @else if (route().basePath === '/app/administration' && route().localPath === '/') {
       <dlc-staff-directory />
@@ -43,7 +50,7 @@ class IamPortalRootComponent {
   private readonly context = inject(IAM_PORTAL_CONTEXT);
   readonly route = signal(this.context.route);
 
-  async requestRoute(path: '/login' | '/recover-password'): Promise<void> {
+  async requestRoute(path: '/login' | '/recover-password' | '/recover-password/verify-email'): Promise<void> {
     try {
       await this.context.navigation.request({ path });
     } catch {
@@ -82,6 +89,7 @@ export async function mount(
     providers: [
       { provide: IAM_PORTAL_CONTEXT, useValue: context },
       { provide: IamApiService, useClass: ShellIamApiService },
+      EmailVerificationService,
       StaffDirectoryService,
       {
         provide: ErrorHandler,

@@ -63,9 +63,25 @@ describe('IAM portal entry', () => {
       basePath: '/recover-password',
     });
     expect(host.querySelector('dlc-recover-password')).not.toBeNull();
-    const backButton = host.querySelector<HTMLButtonElement>(
+    const verifyButton = [...host.querySelectorAll<HTMLButtonElement>(
       'dlc-recover-password .text-link',
-    );
+    )].find((button) => button.textContent?.includes('código de verificación'));
+    if (!verifyButton) throw new Error('Email verification link is missing');
+    verifyButton.click();
+    expect(context.navigation.request).toHaveBeenCalledWith({
+      path: '/recover-password/verify-email',
+    });
+    await handle.updateRoute({
+      ...route, globalPath: '/recover-password/verify-email',
+      basePath: '/recover-password', localPath: '/verify-email',
+    });
+    expect(host.querySelector('dlc-email-verification')).not.toBeNull();
+    await handle.updateRoute({
+      ...route, globalPath: '/recover-password', basePath: '/recover-password',
+    });
+    const backButton = [...host.querySelectorAll<HTMLButtonElement>(
+      'dlc-recover-password .text-link',
+    )].find((button) => button.textContent?.includes('Volver a iniciar sesión'));
     if (!backButton) throw new Error('Back to login button is missing');
     backButton.click();
     expect(context.navigation.request).toHaveBeenCalledWith({ path: '/login' });

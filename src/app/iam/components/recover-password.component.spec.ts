@@ -61,4 +61,14 @@ describe('RecoverPasswordComponent', () => {
     expect(host.querySelector<HTMLButtonElement>('button[type="submit"]')?.disabled)
       .toBe(true);
   });
+
+  it('offers navigation to email verification', async () => {
+    const { fixture, host } = await render(vi.fn().mockReturnValue(of(void 0)));
+    const navigate = vi.fn();
+    fixture.componentInstance.verifyEmail.subscribe(navigate);
+    const button = [...host.querySelectorAll<HTMLButtonElement>('.text-link')]
+      .find((item) => item.textContent?.includes('código de verificación'));
+    button?.click();
+    expect(navigate).toHaveBeenCalledTimes(1);
+  });
 });

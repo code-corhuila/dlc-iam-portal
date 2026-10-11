@@ -30,6 +30,9 @@ import { IamApiService } from '../data/iam-api.service';
           }
         </form>
       }
+      <button type="button" class="text-link" (click)="verifyEmail.emit()">
+        Ya tengo un código de verificación
+      </button>
       <button type="button" class="text-link" (click)="backToLogin.emit()">
         Volver a iniciar sesión
       </button>
@@ -41,6 +44,7 @@ export class RecoverPasswordComponent {
   private readonly destroyRef = inject(DestroyRef);
 
   @Output() readonly backToLogin = new EventEmitter<void>();
+  @Output() readonly verifyEmail = new EventEmitter<void>();
   email = '';
   loading = false;
   submitted = false;
