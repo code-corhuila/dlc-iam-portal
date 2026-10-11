@@ -101,6 +101,11 @@ describe('IAM portal entry', () => {
     });
     expect(host.querySelector('dlc-staff-directory')).not.toBeNull();
 
+    await handle.updateRoute({
+      ...route, globalPath: '/app/sessions', basePath: '/app/sessions',
+    });
+    expect(host.querySelector('dlc-own-sessions')).not.toBeNull();
+
     await handle.updateRoute({ ...route, localPath: '/unknown' });
     expect(host.textContent).toContain('Página no encontrada');
 
@@ -110,6 +115,18 @@ describe('IAM portal entry', () => {
     expect(host.style.getPropertyValue('--iam-clinic-background')).toBe('');
     await expect(handle.updateRoute(route))
       .rejects.toThrow('Invalid IAM route update');
+  });
+
+  it('mounts the own-sessions screen from a direct shell route', async () => {
+    handle = await mount(host, {
+      ...context,
+      route: { ...route, globalPath: '/app/sessions', basePath: '/app/sessions' },
+    });
+
+    expect(host.querySelector('dlc-own-sessions')).not.toBeNull();
+    await vi.waitFor(() => expect(context.http.request).toHaveBeenCalledWith(
+      expect.objectContaining({ method: 'GET', path: '/api/v1/auth/sessions' }),
+    ));
   });
 
   it('rejects a mount whose signal was already aborted', async () => {
