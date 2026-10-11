@@ -1,4 +1,4 @@
-import { Component, DestroyRef, OnChanges, SimpleChanges, inject, input, output, signal } from '@angular/core';
+import { Component, DestroyRef, OnChanges, SimpleChanges, computed, inject, input, output, signal } from '@angular/core';
 import { StaffDirectoryService } from '../data/staff-directory.service';
 import type { Staff } from '../model/staff';
 
@@ -12,10 +12,10 @@ import type { Staff } from '../model/staff';
       <p>Esta acción revoca sus sesiones. Auth confirma y registra la operación.</p>
       <label>Motivo
         <textarea name="reason" required maxlength="1000" rows="3"
-          [disabled]="state() === 'saving'"></textarea>
+          [disabled]="state() === 'saving' || terminalResponse()"></textarea>
       </label>
       <div class="actions">
-        <button type="submit" [disabled]="state() === 'saving' || state() === 'conflict'">
+        <button type="submit" [disabled]="submitBlocked()">
           Confirmar deshabilitación
         </button>
         <button type="button" (click)="cancel.emit()" [disabled]="state() === 'saving'">Cancelar</button>
@@ -48,10 +48,18 @@ export class StaffDisableComponent implements OnChanges {
   readonly refresh = output<void>();
   readonly state = signal<'editing' | 'saving' | 'invalid' | 'conflict' | 'forbidden' |
     'session-expired' | 'not-found' | 'error'>('editing');
+  readonly terminalResponse = computed(() => this.state() === 'forbidden' ||
+    this.state() === 'session-expired' || this.state() === 'not-found');
+  readonly submitBlocked = computed(() =>
+    this.state() !== 'editing' && this.state() !== 'invalid' && this.state() !== 'error');
   private idempotencyKey: string | null = null;
 
   ngOnChanges(changes: SimpleChanges): void {
-    if (changes['member'] && !changes['member'].firstChange) {
+    const change = changes['member'];
+    if (change && !change.firstChange &&
+      (this.state() === 'conflict' || !this.submitBlocked()) &&
+      (change.previousValue?.id !== change.currentValue?.id ||
+        change.previousValue?.version !== change.currentValue?.version)) {
       this.idempotencyKey = null;
       this.state.set('editing');
     }
@@ -63,14 +71,14 @@ export class StaffDisableComponent implements OnChanges {
   }
 
   invalidateKey(): void {
-    if (this.state() === 'saving') return;
+    if (this.submitBlocked()) return;
     this.idempotencyKey = null;
-    if (this.state() !== 'conflict') this.state.set('editing');
+    this.state.set('editing');
   }
 
   async submit(event: Event): Promise<void> {
     event.preventDefault();
-    if (this.state() === 'saving' || this.state() === 'conflict') return;
+    if (this.submitBlocked()) return;
     const form = event.currentTarget as HTMLFormElement;
     if (!form.checkValidity()) return;
     const reason = String(new FormData(form).get('reason') ?? '').trim();

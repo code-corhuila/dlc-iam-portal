@@ -53,11 +53,14 @@ describe('StaffDisableComponent', () => {
     const { fixture, host, submit } = await render(disable);
     submit();
     await fixture.whenStable();
+    fixture.detectChanges();
+    expect(host.querySelector<HTMLButtonElement>('button[type="submit"]')?.disabled).toBe(false);
     submit();
     await fixture.whenStable();
     fixture.detectChanges();
     expect(disable.mock.calls[1][2]).toBe(disable.mock.calls[0][2]);
     expect(host.querySelector('[role="alert"]')?.textContent).toContain('cambió');
+    expect(host.querySelector<HTMLTextAreaElement>('textarea[name="reason"]')?.disabled).toBe(false);
     submit();
     expect(disable).toHaveBeenCalledTimes(2);
     const refresh = vi.fn();
@@ -85,4 +88,25 @@ describe('StaffDisableComponent', () => {
     fixture.detectChanges();
     expect(host.querySelector('[role="alert"]')?.textContent).toContain(message);
   });
+
+  it.each(['forbidden', 'session-expired', 'not-found'])(
+    'blocks %s after input and member updates', async (kind) => {
+      const disable = vi.fn().mockResolvedValue({ kind });
+      const { fixture, host, submit, reason } = await render(disable);
+      submit();
+      await fixture.whenStable();
+      fixture.detectChanges();
+      const button = host.querySelector<HTMLButtonElement>('button[type="submit"]');
+      expect(button?.disabled).toBe(true);
+      expect(reason.disabled).toBe(true);
+      reason.value = 'Otro motivo';
+      reason.dispatchEvent(new Event('input', { bubbles: true }));
+      fixture.componentRef.setInput('member', { ...member, version: 4 });
+      fixture.detectChanges();
+      expect(button?.disabled).toBe(true);
+      expect(reason.disabled).toBe(true);
+      submit();
+      expect(disable).toHaveBeenCalledTimes(1);
+    },
+  );
 });
