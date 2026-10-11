@@ -4,11 +4,12 @@ import type { Staff, StaffPage, StaffStatus } from '../model/staff';
 import { StaffCreateComponent } from './staff-create.component';
 import { StaffDisableComponent } from './staff-disable.component';
 import { StaffEditComponent } from './staff-edit.component';
+import { StaffEnableComponent } from './staff-enable.component';
 
 @Component({
   selector: 'dlc-staff-directory',
   standalone: true,
-  imports: [StaffCreateComponent, StaffDisableComponent, StaffEditComponent],
+  imports: [StaffCreateComponent, StaffDisableComponent, StaffEditComponent, StaffEnableComponent],
   styleUrl: './staff-directory.component.css',
   template: `
     <section class="directory" aria-label="Administración de personal">
@@ -37,10 +38,15 @@ import { StaffEditComponent } from './staff-edit.component';
             } @else if (disabling()) {
               <dlc-staff-disable [member]="member" (saved)="saveDetail($event)"
                 (cancel)="disabling.set(false)" (refresh)="openDetail(member.id)" />
+            } @else if (enabling()) {
+              <dlc-staff-enable [member]="member" (saved)="saveDetail($event)"
+                (cancel)="enabling.set(false)" (refresh)="openDetail(member.id)" />
             } @else {
               <button type="button" (click)="editing.set(true)">Editar nombre</button>
               @if (member.status !== 'DISABLED') {
                 <button type="button" (click)="disabling.set(true)">Deshabilitar personal</button>
+              } @else {
+                <button type="button" (click)="enabling.set(true)">Habilitar personal</button>
               }
             }
             <dl>
@@ -97,6 +103,7 @@ export class StaffDirectoryComponent implements OnInit {
   readonly creating = signal(false);
   readonly editing = signal(false);
   readonly disabling = signal(false);
+  readonly enabling = signal(false);
   readonly detailState = signal<'loading' | 'ready' | 'forbidden' | 'not-found' | 'session-expired' | 'error'>('loading');
   requestedPage = 1;
   private loadVersion = 0;
@@ -125,6 +132,7 @@ export class StaffDirectoryComponent implements OnInit {
     const version = ++this.detailVersion;
     this.editing.set(false);
     this.disabling.set(false);
+    this.enabling.set(false);
     this.selectedId.set(id);
     this.detail.set(null);
     this.detailState.set('loading');
@@ -142,6 +150,7 @@ export class StaffDirectoryComponent implements OnInit {
     ++this.detailVersion;
     this.editing.set(false);
     this.disabling.set(false);
+    this.enabling.set(false);
     this.selectedId.set(null);
     this.detail.set(null);
   }
@@ -155,6 +164,7 @@ export class StaffDirectoryComponent implements OnInit {
     this.detail.set(staff);
     this.editing.set(false);
     this.disabling.set(false);
+    this.enabling.set(false);
     const current = this.page();
     if (current) {
       this.page.set({ ...current, data: current.data.map((member) =>

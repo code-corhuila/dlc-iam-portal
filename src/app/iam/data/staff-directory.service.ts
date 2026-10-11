@@ -31,6 +31,11 @@ export type StaffDisableResult =
   | { readonly kind: 'invalid' | 'conflict' | 'forbidden' | 'not-found' |
       'session-expired' | 'unavailable' };
 
+export type StaffEnableResult =
+  | { readonly kind: 'enabled'; readonly staff: Staff }
+  | { readonly kind: 'invalid' | 'conflict' | 'forbidden' | 'not-found' |
+      'session-expired' | 'unavailable' };
+
 function record(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
@@ -70,6 +75,37 @@ function isStaffPage(value: unknown): value is StaffPage {
 @Injectable()
 export class StaffDirectoryService {
   private readonly context = inject(IAM_PORTAL_CONTEXT);
+
+  async enable(member: Staff, reason: string, key: string): Promise<StaffEnableResult> {
+    const trimmedReason = reason.trim();
+    if (!uuidPattern.test(member.id) ||
+        !Number.isInteger(member.version) || member.version < 1 ||
+        !trimmedReason || trimmedReason.length > 1000 ||
+        !uuidPattern.test(key)) return { kind: 'invalid' };
+    if (this.context.signal.aborted) return { kind: 'unavailable' };
+    try {
+      const result = await this.context.http.request({
+        method: 'POST', path: `/api/v1/auth/staff/${member.id}/enablings`,
+        body: { reason: trimmedReason, expectedVersion: member.version },
+        headers: { 'Idempotency-Key': key }, signal: this.context.signal,
+      });
+      if (this.context.signal.aborted) return { kind: 'unavailable' };
+      if (!result.ok) {
+        return { kind: result.status === 400 ? 'invalid' :
+          result.status === 401 ? 'session-expired' :
+          result.status === 403 ? 'forbidden' :
+          result.status === 404 ? 'not-found' :
+          result.status === 409 ? 'conflict' : 'unavailable' };
+      }
+      if (result.status !== 200 || !isStaff(result.data) ||
+          result.data.id.toLowerCase() !== member.id.toLowerCase() ||
+          (result.data.status !== 'ACTIVE' && result.data.status !== 'PENDING_VERIFICATION') ||
+          result.data.version <= member.version) return { kind: 'unavailable' };
+      return { kind: 'enabled', staff: result.data };
+    } catch {
+      return { kind: 'unavailable' };
+    }
+  }
 
   async disable(member: Staff, reason: string, key: string): Promise<StaffDisableResult> {
     const trimmedReason = reason.trim();
