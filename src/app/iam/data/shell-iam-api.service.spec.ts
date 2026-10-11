@@ -37,14 +37,17 @@ describe('ShellIamApiService', () => {
       .rejects.toThrow('Invalid password recovery response');
   });
 
-  it('uses shell HTTP and rejects a malformed MFA response', async () => {
+  it('completes login through the shell and rejects an unauthenticated result', async () => {
     const controller = new AbortController();
     const request = vi.fn();
+    const complete = vi.fn();
     TestBed.configureTestingModule({
       providers: [
         {
           provide: IAM_PORTAL_CONTEXT,
-          useValue: { signal: controller.signal, http: { request } },
+          useValue: {
+            signal: controller.signal, http: { request }, iamSession: { complete },
+          },
         },
         { provide: IamApiService, useClass: ShellIamApiService },
       ],
@@ -52,26 +55,19 @@ describe('ShellIamApiService', () => {
 
     const api = TestBed.inject(IamApiService);
     const credentials = { email: 'user@example.test', password: 'test-password' };
-    const challenge = {
-      challengeId: 'a3f80675-6c3d-4f10-8d78-60ed82da53a7',
-      expiresAt: new Date(Date.now() + 300_000).toISOString(),
-      mfaRequired: true,
-    };
-    const success = (data: unknown) => ({
-      ok: true, status: 200, data, headers: {}, correlationId: 'test-id',
+    complete.mockResolvedValueOnce({
+      ok: true, status: 200, data: { state: 'authenticated' },
     });
-
-    request.mockResolvedValueOnce(success(challenge));
-    expect(await firstValueFrom(api.login(credentials))).toEqual(challenge);
-    expect(request).toHaveBeenCalledWith({
-      method: 'POST',
-      path: '/api/v1/auth/login',
-      body: credentials,
-      signal: controller.signal,
+    await expect(firstValueFrom(api.login(credentials))).resolves.toBeUndefined();
+    expect(complete).toHaveBeenCalledWith({
+      operationId: 'AuthLogin', body: credentials,
     });
+    expect(request).not.toHaveBeenCalled();
 
-    request.mockResolvedValueOnce(success({ ...challenge, accessToken: 'unexpected' }));
+    complete.mockResolvedValueOnce({
+      ok: true, status: 200, data: { state: 'anonymous' },
+    });
     await expect(firstValueFrom(api.login(credentials)))
-      .rejects.toThrow('Invalid MFA challenge');
+      .rejects.toThrow('Authentication could not be completed');
   });
 });
