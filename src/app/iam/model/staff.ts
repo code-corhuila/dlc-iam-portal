@@ -1,6 +1,12 @@
 export type StaffRole = 'ADMINISTRATOR' | 'DENTIST' | 'SECRETARY_ASSISTANT';
 export type StaffStatus = 'PENDING_VERIFICATION' | 'ACTIVE' | 'LOCKED' | 'DISABLED';
 
+export const ASSIGNABLE_STAFF_ROLES = [
+  { value: 'DENTIST', label: 'Odontólogo' },
+  { value: 'SECRETARY_ASSISTANT', label: 'Secretario auxiliar' },
+] as const satisfies readonly { value: StaffRole; label: string }[];
+export type AssignableStaffRole = (typeof ASSIGNABLE_STAFF_ROLES)[number]['value'];
+
 export interface Staff {
   readonly id: string;
   readonly email: string;
