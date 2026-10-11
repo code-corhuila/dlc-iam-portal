@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { IAM_PORTAL_CONTEXT } from './shell-iam-api.service';
-import type { Staff, StaffPage } from '../model/staff';
+import { ASSIGNABLE_STAFF_ROLES, type AssignableStaffRole, type Staff, type StaffPage } from '../model/staff';
 
 export type StaffListResult =
   | { readonly kind: 'loaded'; readonly page: StaffPage }
@@ -33,6 +33,11 @@ export type StaffDisableResult =
 
 export type StaffEnableResult =
   | { readonly kind: 'enabled'; readonly staff: Staff }
+  | { readonly kind: 'invalid' | 'conflict' | 'forbidden' | 'not-found' |
+      'session-expired' | 'unavailable' };
+
+export type StaffRolesResult =
+  | { readonly kind: 'assigned'; readonly staff: Staff }
   | { readonly kind: 'invalid' | 'conflict' | 'forbidden' | 'not-found' |
       'session-expired' | 'unavailable' };
 
@@ -75,6 +80,47 @@ function isStaffPage(value: unknown): value is StaffPage {
 @Injectable()
 export class StaffDirectoryService {
   private readonly context = inject(IAM_PORTAL_CONTEXT);
+
+  async assignRoles(member: Staff, selected: readonly AssignableStaffRole[],
+    reason: string): Promise<StaffRolesResult> {
+    const rolesToAssign = [...selected];
+    const trimmedReason = reason.trim();
+    if (!uuidPattern.test(member.id) || member.roles.includes('ADMINISTRATOR') ||
+        !Number.isInteger(member.version) || member.version < 1 ||
+        rolesToAssign.length < 1 || rolesToAssign.length > ASSIGNABLE_STAFF_ROLES.length ||
+        new Set(rolesToAssign).size !== rolesToAssign.length ||
+        rolesToAssign.some((role) => !ASSIGNABLE_STAFF_ROLES.some((option) => option.value === role)) ||
+        (rolesToAssign.length === member.roles.length &&
+          rolesToAssign.every((role) => member.roles.includes(role))) ||
+        !trimmedReason || trimmedReason.length > 1000) return { kind: 'invalid' };
+    if (this.context.signal.aborted) return { kind: 'unavailable' };
+    try {
+      const result = await this.context.http.request({
+        method: 'PUT', path: `/api/v1/auth/staff/${member.id}/role-assignments`,
+        body: { roles: rolesToAssign, expectedVersion: member.version, reason: trimmedReason },
+        signal: this.context.signal,
+      });
+      if (this.context.signal.aborted) return { kind: 'unavailable' };
+      if (!result.ok) {
+        return { kind: result.status === 400 ? 'invalid' :
+          result.status === 401 ? 'session-expired' :
+          result.status === 403 ? 'forbidden' :
+          result.status === 404 ? 'not-found' :
+          result.status === 409 ? 'conflict' : 'unavailable' };
+      }
+      if (result.status !== 200 || !isStaff(result.data) ||
+          result.data.id.toLowerCase() !== member.id.toLowerCase() ||
+          result.data.version <= member.version ||
+          result.data.roles.length !== rolesToAssign.length ||
+          new Set(result.data.roles).size !== rolesToAssign.length ||
+          result.data.roles.some((role) => !rolesToAssign.includes(role as AssignableStaffRole))) {
+        return { kind: 'unavailable' };
+      }
+      return { kind: 'assigned', staff: result.data };
+    } catch {
+      return { kind: 'unavailable' };
+    }
+  }
 
   async enable(member: Staff, reason: string, key: string): Promise<StaffEnableResult> {
     const trimmedReason = reason.trim();

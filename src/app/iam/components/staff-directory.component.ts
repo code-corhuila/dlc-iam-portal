@@ -5,11 +5,13 @@ import { StaffCreateComponent } from './staff-create.component';
 import { StaffDisableComponent } from './staff-disable.component';
 import { StaffEditComponent } from './staff-edit.component';
 import { StaffEnableComponent } from './staff-enable.component';
+import { StaffRolesComponent } from './staff-roles.component';
 
 @Component({
   selector: 'dlc-staff-directory',
   standalone: true,
-  imports: [StaffCreateComponent, StaffDisableComponent, StaffEditComponent, StaffEnableComponent],
+  imports: [StaffCreateComponent, StaffDisableComponent, StaffEditComponent,
+    StaffEnableComponent, StaffRolesComponent],
   styleUrl: './staff-directory.component.css',
   template: `
     <section class="directory" aria-label="Administración de personal">
@@ -41,8 +43,14 @@ import { StaffEnableComponent } from './staff-enable.component';
             } @else if (enabling()) {
               <dlc-staff-enable [member]="member" (saved)="saveDetail($event)"
                 (cancel)="enabling.set(false)" (refresh)="openDetail(member.id)" />
+            } @else if (changingRoles()) {
+              <dlc-staff-roles [member]="member" (saved)="saveDetail($event)"
+                (cancel)="changingRoles.set(false)" (refresh)="openDetail(member.id)" />
             } @else {
               <button type="button" (click)="editing.set(true)">Editar nombre</button>
+              @if (!member.roles.includes('ADMINISTRATOR')) {
+                <button type="button" (click)="changingRoles.set(true)">Cambiar roles</button>
+              }
               @if (member.status !== 'DISABLED') {
                 <button type="button" (click)="disabling.set(true)">Deshabilitar personal</button>
               } @else {
@@ -104,6 +112,7 @@ export class StaffDirectoryComponent implements OnInit {
   readonly editing = signal(false);
   readonly disabling = signal(false);
   readonly enabling = signal(false);
+  readonly changingRoles = signal(false);
   readonly detailState = signal<'loading' | 'ready' | 'forbidden' | 'not-found' | 'session-expired' | 'error'>('loading');
   requestedPage = 1;
   private loadVersion = 0;
@@ -133,6 +142,7 @@ export class StaffDirectoryComponent implements OnInit {
     this.editing.set(false);
     this.disabling.set(false);
     this.enabling.set(false);
+    this.changingRoles.set(false);
     this.selectedId.set(id);
     this.detail.set(null);
     this.detailState.set('loading');
@@ -151,6 +161,7 @@ export class StaffDirectoryComponent implements OnInit {
     this.editing.set(false);
     this.disabling.set(false);
     this.enabling.set(false);
+    this.changingRoles.set(false);
     this.selectedId.set(null);
     this.detail.set(null);
   }
@@ -165,6 +176,7 @@ export class StaffDirectoryComponent implements OnInit {
     this.editing.set(false);
     this.disabling.set(false);
     this.enabling.set(false);
+    this.changingRoles.set(false);
     const current = this.page();
     if (current) {
       this.page.set({ ...current, data: current.data.map((member) =>
