@@ -1,7 +1,7 @@
 import { Observable } from 'rxjs';
-import { LoginCredentials, MfaChallenge } from '../model/auth';
+import { LoginCredentials } from '../model/auth';
 
 export abstract class IamApiService {
-  abstract login(credentials: LoginCredentials): Observable<MfaChallenge>;
+  abstract login(credentials: LoginCredentials): Observable<void>;
   abstract requestPasswordRecovery(email: string): Observable<void>;
 }

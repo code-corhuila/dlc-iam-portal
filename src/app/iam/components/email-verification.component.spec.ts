@@ -50,15 +50,22 @@ describe('EmailVerificationComponent', () => {
     expect(host.textContent).not.toContain('secret-token');
   });
 
-  it('blocks retry after a rate limit', async () => {
-    const verify = vi.fn().mockResolvedValue('rate-limited');
+  it('keeps the token available for a later retry after a rate limit', async () => {
+    const verify = vi.fn().mockResolvedValueOnce('rate-limited').mockResolvedValueOnce('verified');
     const { fixture, host, form } = await render(verify);
     form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
     await fixture.whenStable();
     fixture.detectChanges();
-    expect(host.querySelector<HTMLButtonElement>('button[type="submit"]')?.disabled).toBe(true);
+    expect(host.querySelector('[role="alert"]')?.textContent).toContain('Inténtalo más tarde');
+    expect(host.querySelector<HTMLInputElement>('input[name="token"]')?.disabled).toBe(false);
+    expect(host.querySelector<HTMLButtonElement>('button[type="submit"]')?.disabled).toBe(false);
+    expect(fixture.componentInstance.token()).toBe(' secret-token ');
     form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
-    expect(verify).toHaveBeenCalledTimes(1);
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(verify).toHaveBeenCalledTimes(2);
+    expect(verify).toHaveBeenNthCalledWith(2, ' secret-token ');
+    expect(host.querySelector('[role="status"]')?.textContent).toContain('verificado');
   });
 
   it.each([

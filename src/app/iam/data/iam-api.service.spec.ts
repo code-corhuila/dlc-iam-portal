@@ -6,7 +6,8 @@ import { IamApiService } from './iam-api.service';
 
 describe('IamApiService', () => {
   afterEach(() => vi.unstubAllGlobals());
-  it('returns an MFA challenge without creating a session', async () => {
+
+  it('does not pretend to create a session in the standalone preview', async () => {
     TestBed.configureTestingModule({
       providers: [{ provide: IamApiService, useClass: FakeIamApiService }],
     });
@@ -14,26 +15,11 @@ describe('IamApiService', () => {
     vi.stubGlobal('localStorage', { setItem: storageWrite });
     vi.stubGlobal('sessionStorage', { setItem: storageWrite });
     const api = TestBed.inject(IamApiService);
-    const challenge = await firstValueFrom(api.login({
-      email: 'staff@example.test',
-      password: 'StrongPass1',
-    }));
-    expect(challenge.challengeId).toMatch(
-      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
-    );
-    expect(Date.parse(challenge.expiresAt)).toBeGreaterThan(Date.now());
-    expect(challenge.mfaRequired).toBe(true);
-    expect(challenge).not.toHaveProperty('accessToken');
-    expect(storageWrite).not.toHaveBeenCalled();
-  });
-    it('rejects credentials outside the local fixture', async () => {
-    TestBed.configureTestingModule({
-      providers: [{ provide: IamApiService, useClass: FakeIamApiService }],
-    });
-    const api = TestBed.inject(IamApiService);
+
     await expect(firstValueFrom(api.login({
       email: 'staff@example.test',
-      password: 'wrong-password',
-    }))).rejects.toThrow('Invalid credentials');
+      password: 'StrongPass1',
+    }))).rejects.toThrow('Login requires the shell session capability');
+    expect(storageWrite).not.toHaveBeenCalled();
   });
 });
