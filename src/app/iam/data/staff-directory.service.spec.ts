@@ -221,6 +221,53 @@ describe('StaffDirectoryService', () => {
       .toEqual({ kind });
   });
 
+  it.each(['ACTIVE', 'PENDING_VERIFICATION'] as const)(
+    'unlocks a locked record into %s through shell HTTP', async (status) => {
+      const { directory, request, controller } = setup();
+      const locked = { ...staff, status: 'LOCKED' as const };
+      const updated = { ...staff, status, version: 2 };
+      request.mockResolvedValue({ ok: true, status: 200, data: updated });
+      expect(await directory.unlock(locked, '  Verificación del administrador  ', key))
+        .toEqual({ kind: 'unlocked', staff: updated });
+      expect(request).toHaveBeenCalledWith({
+        method: 'POST', path: `/api/v1/auth/staff/${staff.id}/unlocks`,
+        body: { reason: 'Verificación del administrador', expectedVersion: 1 },
+        headers: { 'Idempotency-Key': key }, signal: controller.signal,
+      });
+    },
+  );
+
+  it('rejects invalid unlocks and does not trust a stale or private Auth response', async () => {
+    const { directory, request } = setup();
+    const locked = { ...staff, status: 'LOCKED' as const };
+    expect(await directory.unlock(staff, 'Motivo', key)).toEqual({ kind: 'invalid-record' });
+    expect(await directory.unlock(locked, ' ', key)).toEqual({ kind: 'invalid' });
+    expect(await directory.unlock(locked, 'Motivo', 'bad-key')).toEqual({ kind: 'invalid-key' });
+    expect(request).not.toHaveBeenCalled();
+    request.mockResolvedValueOnce({ ok: true, status: 200,
+      data: { ...staff, version: 2, passwordHash: 'secret' } });
+    request.mockResolvedValueOnce({ ok: true, status: 200, data: staff });
+    expect(await directory.unlock(locked, 'Motivo', key)).toEqual({ kind: 'unavailable' });
+    expect(await directory.unlock(locked, 'Motivo', key)).toEqual({ kind: 'unavailable' });
+  });
+
+  it.each([
+    [400, 'invalid'], [401, 'session-expired'], [403, 'forbidden'],
+    [404, 'not-found'], [409, 'conflict'], [503, 'unavailable'],
+  ])('maps unlock HTTP %i to %s', async (status, kind) => {
+    const { directory, request } = setup();
+    request.mockResolvedValue({ ok: false, status });
+    expect(await directory.unlock({ ...staff, status: 'LOCKED' }, 'Motivo', key))
+      .toEqual({ kind });
+  });
+
+  it('does not claim an unlock succeeded when the response is lost', async () => {
+    const { directory, request } = setup();
+    request.mockRejectedValue(new Error('Connection lost'));
+    expect(await directory.unlock({ ...staff, status: 'LOCKED' }, 'Motivo', key))
+      .toEqual({ kind: 'unavailable' });
+  });
+
   it('disables a versioned staff record through shell HTTP with a reason and retry key', async () => {
     const { directory, request, controller } = setup();
     const disabled = { ...staff, status: 'DISABLED', version: 2 };
