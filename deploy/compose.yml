@@ -1,0 +1,23 @@
+name: dlc-iam-portal
+
+services:
+  iam-portal-demo:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+      args:
+        IAM_RELEASE: ${IAM_RELEASE:-0.1.0-local}
+    restart: unless-stopped
+    healthcheck:
+      test: ['CMD', 'wget', '-q', '-O', '/dev/null', 'http://127.0.0.1/healthz']
+      interval: 15s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+    networks:
+      - front
+
+networks:
+  front:
+    external: true
+    name: ${FRONT_NETWORK:-dlc-front_default}
