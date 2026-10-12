@@ -1,34 +1,11 @@
 import { Injectable, InjectionToken, inject } from '@angular/core';
 import { Observable, defer, map } from 'rxjs';
 import { PortalContext } from '../../shell-contract';
-import { LoginCredentials, MfaChallenge } from '../model/auth';
+import { LoginCredentials } from '../model/auth';
 import { IamApiService } from './iam-api.service';
 
 export const IAM_PORTAL_CONTEXT =
   new InjectionToken<PortalContext>('IAM_PORTAL_CONTEXT');
-
-function parseMfaChallenge(value: unknown): MfaChallenge {
-  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
-    throw new Error('Invalid MFA challenge');
-  }
-
-  const body = value as Record<string, unknown>;
-  const challengeId = body['challengeId'];
-  const expiresAt = body['expiresAt'];
-
-  if (
-    Object.keys(body).length !== 3 ||
-    typeof challengeId !== 'string' ||
-    !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(challengeId) ||
-    typeof expiresAt !== 'string' ||
-    !Number.isFinite(Date.parse(expiresAt)) ||
-    body['mfaRequired'] !== true
-  ) {
-    throw new Error('Invalid MFA challenge');
-  }
-
-  return { challengeId, expiresAt, mfaRequired: true };
-}
 
 @Injectable()
 export class ShellIamApiService extends IamApiService {
@@ -63,25 +40,23 @@ export class ShellIamApiService extends IamApiService {
     );
   }
 
-  override login(credentials: LoginCredentials): Observable<MfaChallenge> {
+  override login(credentials: LoginCredentials): Observable<void> {
     return defer(() => {
-      if (this.context.signal.aborted) {
+      if (this.context.signal.aborted ||
+          typeof this.context.iamSession?.complete !== 'function') {
         throw new Error('Login cancelled');
       }
-
-      return this.context.http.request({
-        method: 'POST',
-        path: '/api/v1/auth/login',
+      return this.context.iamSession.complete({
+        operationId: 'AuthLogin',
         body: credentials,
-        signal: this.context.signal,
       });
     }).pipe(
       map((result) => {
-        if (this.context.signal.aborted || !result.ok || result.status !== 200) {
+        if (this.context.signal.aborted || !result.ok || result.status !== 200 ||
+            typeof result.data !== 'object' || result.data === null ||
+            (result.data as { state?: unknown }).state !== 'authenticated') {
           throw new Error('Authentication could not be completed');
         }
-
-        return parseMfaChallenge(result.data);
       }),
     );
   }

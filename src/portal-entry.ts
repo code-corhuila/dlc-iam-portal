@@ -92,6 +92,7 @@ export async function mount(
     !context.route ||
     !ownsRoute(context.route) ||
     typeof context.http?.request !== 'function' ||
+    typeof context.iamSession?.complete !== 'function' ||
     typeof context.navigation?.request !== 'function' ||
     typeof context.reportFailure !== 'function' ||
     !context.signal ||
