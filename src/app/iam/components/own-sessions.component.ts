@@ -8,44 +8,74 @@ import type { OwnSession, OwnSessionPage } from '../model/session';
   styleUrl: './own-sessions.component.css',
   template: `
     <section class="sessions" aria-label="Mis sesiones">
-      <h1>Mis sesiones</h1>
-      @if (notice()) { <p role="status">{{ notice() }}</p> }
+      <header class="page-heading">
+        <p class="eyebrow">Seguridad de la cuenta</p>
+        <h1>Mis sesiones</h1>
+        <p class="subtitle">Revisa los dispositivos con acceso a tu cuenta y cierra los que ya no reconozcas.</p>
+      </header>
+      @if (notice()) { <p class="notice" role="status">{{ notice() }}</p> }
       @if (state() === 'loading') {
-        <p role="status">Cargando sesiones…</p>
+        <p class="state-card" role="status">Cargando sesiones…</p>
       } @else if (state() === 'forbidden') {
-        <p role="alert">No tienes permiso para consultar tus sesiones.</p>
+        <p class="state-card" role="alert">No tienes permiso para consultar tus sesiones.</p>
       } @else if (state() === 'session-expired') {
-        <p role="alert">La sesión terminó. Inicia sesión de nuevo.</p>
+        <p class="state-card" role="alert">La sesión terminó. Inicia sesión de nuevo.</p>
       } @else if (state() === 'error') {
-        <p role="alert">No se pudieron cargar tus sesiones.</p>
-        <button type="button" (click)="load(requestedPage)">Reintentar</button>
+        <div class="state-card" role="alert">
+          <p>No se pudieron cargar tus sesiones.</p>
+          <button type="button" (click)="load(requestedPage)">Reintentar</button>
+        </div>
       } @else if (page(); as result) {
-        <p>{{ result.meta.total }} sesiones</p>
-        <ul>
+        <div class="summary-card" aria-label="Resumen de sesiones">
+          <span class="summary-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="4" width="18" height="13" rx="2"/><path d="M8 21h8m-4-4v4"/></svg>
+          </span>
+          <div><span>Dispositivos con acceso</span><strong>{{ result.meta.total }}</strong>
+            <small>Gestiona cada sesión por separado</small></div>
+        </div>
+        <div class="list-heading">
+          <div><h2>Dispositivos conectados</h2><p>{{ result.meta.total }} sesiones en tu cuenta</p></div>
+        </div>
+        <ul class="session-list">
           @for (session of result.data; track session.id) {
-            <li>
-              <strong>{{ session.device || 'Dispositivo no identificado' }}</strong>
-              @if (session.current) { <span class="current">Sesión actual</span> }
-              @if (session.lastUserActivityAt) {
-                <span>Última actividad: {{ formatDate(session.lastUserActivityAt) }}</span>
-              }
-              <span>Vence: {{ formatDate(session.expiresAt) }}</span>
-              <button type="button" [disabled]="revokeState() === 'saving'"
-                (click)="select(session)">Revocar dispositivo</button>
+            <li class="session-card" [class.session-card--current]="session.current">
+              <div class="session-row">
+                <span class="device-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="4" width="18" height="13" rx="2"/><path d="M8 21h8m-4-4v4"/></svg>
+                </span>
+                <div class="session-info">
+                  <div class="device-heading">
+                    <h3>{{ session.device || 'Dispositivo no identificado' }}</h3>
+                    @if (session.current) { <span class="current">Sesión actual</span> }
+                  </div>
+                  <div class="session-dates">
+                    @if (session.lastUserActivityAt) {
+                      <p><span>Última actividad</span><strong>{{ formatDate(session.lastUserActivityAt) }}</strong></p>
+                    }
+                    <p><span>Vence</span><strong>{{ formatDate(session.expiresAt) }}</strong></p>
+                  </div>
+                </div>
+                <button class="revoke-button" type="button" [disabled]="revokeState() === 'saving'"
+                  [attr.aria-expanded]="selectedId() === session.id"
+                  (click)="select(session)">Revocar dispositivo</button>
+              </div>
               @if (selectedId() === session.id) {
                 <form (submit)="revoke($event, session)" aria-label="Revocar sesión">
-                  <p>Se cerrará el acceso de este dispositivo. Auth confirmará la revocación.</p>
+                  <h4>Confirmar cierre de sesión</h4>
+                  <p>Se solicitará el cierre de esta sesión. Te mostraremos el resultado cuando se confirme.</p>
                   @if (session.current) {
-                    <p>Es tu sesión actual; tendrás que iniciar sesión de nuevo.</p>
+                    <p class="current-warning">Es tu sesión actual; tendrás que iniciar sesión de nuevo.</p>
                   }
                   <label>Motivo
                     <textarea name="reason" required maxlength="1000" rows="2"
                       [value]="reason()" (input)="editReason($any($event.target).value)"
                       [disabled]="revokeBlocked()"></textarea>
                   </label>
-                  <button type="submit" [disabled]="revokeBlocked()">Confirmar revocación</button>
-                  <button type="button" [disabled]="revokeState() === 'saving'"
-                    (click)="cancelRevoke()">Cancelar</button>
+                  <div class="form-actions">
+                    <button class="confirm-button" type="submit" [disabled]="revokeBlocked()">Confirmar revocación</button>
+                    <button type="button" [disabled]="revokeState() === 'saving'"
+                      (click)="cancelRevoke()">Cancelar</button>
+                  </div>
                   @if (revokeState() === 'saving') {
                     <p role="status">Revocando sesión…</p>
                   } @else if (revokeState() === 'invalid') {
@@ -66,7 +96,7 @@ import type { OwnSession, OwnSessionPage } from '../model/session';
               }
             </li>
           } @empty {
-            <li role="status">No hay sesiones en esta página.</li>
+            <li class="empty" role="status">No hay sesiones en esta página.</li>
           }
         </ul>
         <nav aria-label="Páginas de sesiones">
