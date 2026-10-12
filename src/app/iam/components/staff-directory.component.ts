@@ -1,6 +1,6 @@
-import { Component, DestroyRef, OnInit, inject, signal } from '@angular/core';
+import { Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
 import { StaffDirectoryService } from '../data/staff-directory.service';
-import type { Staff, StaffPage, StaffStatus } from '../model/staff';
+import type { Staff, StaffPage, StaffRole, StaffStatus } from '../model/staff';
 import { StaffCreateComponent } from './staff-create.component';
 import { StaffDisableComponent } from './staff-disable.component';
 import { StaffEditComponent } from './staff-edit.component';
@@ -16,12 +16,25 @@ import { StaffUnlockComponent } from './staff-unlock.component';
   styleUrl: './staff-directory.component.css',
   template: `
     <section class="directory" aria-label="Administración de personal">
-      <h1>Personal</h1>
+      <header class="page-heading">
+        <p class="eyebrow">Administración</p>
+        <div class="heading-row">
+          <div>
+            <h1>Gestión de usuarios y roles</h1>
+            <p class="subtitle">Gestiona el acceso, los permisos y los roles del personal de la clínica.</p>
+          </div>
+          @if (!creating() && !selectedId() && page()) {
+            <button class="primary-action" type="button" (click)="creating.set(true)">
+              <span aria-hidden="true">＋</span> Agregar nuevo usuario
+            </button>
+          }
+        </div>
+      </header>
       @if (creating()) {
         <dlc-staff-create (close)="closeCreate()" />
       } @else if (selectedId()) {
-        <button type="button" (click)="closeDetail()">Volver al listado</button>
-        <section aria-label="Detalle de personal">
+        <button class="back-button" type="button" (click)="closeDetail()">← Volver al listado</button>
+        <section class="detail-card" aria-label="Detalle de personal">
           @if (detailState() === 'loading') {
             <p role="status">Cargando detalle…</p>
           } @else if (detailState() === 'forbidden') {
@@ -64,9 +77,14 @@ import { StaffUnlockComponent } from './staff-unlock.component';
                 <button type="button" (click)="enabling.set(true)">Habilitar personal</button>
               }
             }
-            <dl>
+            <dl class="staff-details">
               <div><dt>Correo</dt><dd>{{ member.email }}</dd></div>
-              <div><dt>Roles</dt><dd>{{ member.roles.join(', ') }}</dd></div>
+              <div><dt>Roles</dt><dd>
+                @for (role of member.roles; track role) {
+                  <span class="role-badge" [class.role-admin]="role === 'ADMINISTRATOR'"
+                    [class.role-dentist]="role === 'DENTIST'">{{ roleLabel(role) }}</span>
+                }
+              </dd></div>
               <div><dt>Estado</dt><dd>{{ statusLabel(member.status) }}</dd></div>
               <div><dt>Identificador</dt><dd>{{ member.id }}</dd></div>
             </dl>
@@ -82,28 +100,82 @@ import { StaffUnlockComponent } from './staff-unlock.component';
         <p role="alert">No se pudo cargar el personal.</p>
         <button type="button" (click)="load(requestedPage)">Reintentar</button>
       } @else if (page(); as result) {
-        <button type="button" (click)="creating.set(true)">Crear personal</button>
-        <p class="count">{{ result.meta.total }} registros</p>
-        <ul>
-          @for (member of result.data; track member.id) {
-            <li>
-              <strong>{{ member.name }}</strong>
-              <span>{{ member.email }}</span>
-              <span>{{ member.roles.join(', ') }}</span>
-              <span class="status">{{ statusLabel(member.status) }}</span>
-              <button type="button" (click)="openDetail(member.id)">Ver detalle de {{ member.name }}</button>
-            </li>
-          } @empty {
-            <li class="empty" role="status">No hay personal en esta página.</li>
-          }
-        </ul>
-        <nav aria-label="Páginas de personal">
-          <button type="button" [disabled]="result.meta.page <= 1"
-            (click)="load(result.meta.page - 1)">Anterior</button>
-          <span>Página {{ result.meta.page }} de {{ result.meta.totalPages || 1 }}</span>
-          <button type="button" [disabled]="result.meta.page >= result.meta.totalPages"
-            (click)="load(result.meta.page + 1)">Siguiente</button>
-        </nav>
+        <section class="metrics" aria-label="Resumen del personal">
+          <article class="metric-card">
+            <span class="metric-icon metric-icon--people" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="9" cy="8" r="3"/><path d="M3 20v-2a6 6 0 0 1 12 0v2H3ZM16 5a3 3 0 0 1 0 6m2 3a5 5 0 0 1 3 4v2h-3"/></svg>
+            </span>
+            <div><p>Personal total</p><strong>{{ result.meta.total }}</strong><small>En el directorio</small></div>
+          </article>
+          <article class="metric-card">
+            <span class="metric-icon metric-icon--medical" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M6 3v7a5 5 0 0 0 10 0V3M4 3h4m6 0h4m-7 12v2a4 4 0 0 0 8 0v-3"/><circle cx="19" cy="13" r="2"/></svg>
+            </span>
+            <div><p>Profesionales médicos</p><strong>{{ roleCount('DENTIST') }}</strong><small>En esta página</small></div>
+          </article>
+          <article class="metric-card">
+            <span class="metric-icon metric-icon--admin" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="m12 2 8 4v6c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V6l8-4Z"/><path d="M9 12h6m-3-3v6"/></svg>
+            </span>
+            <div><p>Administradores</p><strong>{{ roleCount('ADMINISTRATOR') }}</strong><small>En esta página</small></div>
+          </article>
+        </section>
+        <section class="directory-card" aria-label="Directorio del personal de la clínica">
+          <div class="directory-toolbar">
+            <div>
+              <h2>Directorio del personal de la clínica</h2>
+              <p>{{ result.meta.total }} registros · El filtro se aplica a esta página</p>
+            </div>
+            <div class="filter-control">
+              <label for="staff-role-filter">Filtrar por rol</label>
+              <select id="staff-role-filter" [value]="roleFilter()" (change)="setRoleFilter($event)">
+                <option value="ALL">Todos los roles</option>
+                <option value="DENTIST">Odontólogos</option>
+                <option value="SECRETARY_ASSISTANT">Secretarios auxiliares</option>
+                <option value="ADMINISTRATOR">Administradores</option>
+              </select>
+            </div>
+          </div>
+          <div class="table-scroll">
+            <table>
+              <thead><tr>
+                <th scope="col">Nombre</th><th scope="col">Rol</th><th scope="col">Correo</th>
+                <th scope="col">Estado</th><th scope="col">Acciones</th>
+              </tr></thead>
+              <tbody>
+                @for (member of filteredStaff(); track member.id) {
+                  <tr>
+                    <td><span class="person"><span class="avatar" aria-hidden="true">{{ initials(member.name) }}</span>
+                      <strong>{{ member.name }}</strong></span></td>
+                    <td><span class="role-list">
+                      @for (role of member.roles; track role) {
+                        <span class="role-badge" [class.role-admin]="role === 'ADMINISTRATOR'"
+                          [class.role-dentist]="role === 'DENTIST'">{{ roleLabel(role) }}</span>
+                      }
+                    </span></td>
+                    <td class="email">{{ member.email }}</td>
+                    <td><span class="status-badge" [class.status-active]="member.status === 'ACTIVE'"
+                      [class.status-pending]="member.status === 'PENDING_VERIFICATION'"
+                      [class.status-locked]="member.status === 'LOCKED'">{{ statusLabel(member.status) }}</span></td>
+                    <td><button class="detail-button" type="button" (click)="openDetail(member.id)"
+                      [attr.aria-label]="'Ver detalle de ' + member.name">Ver detalle <span aria-hidden="true">→</span></button></td>
+                  </tr>
+                } @empty {
+                  <tr><td class="empty" colspan="5" role="status">
+                    {{ result.data.length ? 'No hay personal con ese rol en esta página.' : 'No hay personal en esta página.' }}
+                  </td></tr>
+                }
+              </tbody>
+            </table>
+          </div>
+          <nav aria-label="Páginas de personal">
+            <button type="button" [disabled]="result.meta.page <= 1"
+              (click)="load(result.meta.page - 1)">Anterior</button>
+            <span>Página {{ result.meta.page }} de {{ result.meta.totalPages || 1 }}</span>
+            <button type="button" [disabled]="result.meta.page >= result.meta.totalPages"
+              (click)="load(result.meta.page + 1)">Siguiente</button>
+          </nav>
+        </section>
       }
     </section>
   `,
@@ -113,6 +185,11 @@ export class StaffDirectoryComponent implements OnInit {
   private readonly destroyRef = inject(DestroyRef);
   readonly state = signal<'loading' | 'ready' | 'forbidden' | 'session-expired' | 'error'>('loading');
   readonly page = signal<StaffPage | null>(null);
+  readonly roleFilter = signal<'ALL' | StaffRole>('ALL');
+  readonly filteredStaff = computed(() => {
+    const role = this.roleFilter();
+    return this.page()?.data.filter((member) => role === 'ALL' || member.roles.includes(role)) ?? [];
+  });
   readonly selectedId = signal<string | null>(null);
   readonly detail = signal<Staff | null>(null);
   readonly creating = signal(false);
@@ -193,6 +270,28 @@ export class StaffDirectoryComponent implements OnInit {
       this.page.set({ ...current, data: current.data.map((member) =>
         member.id === staff.id ? staff : member) });
     }
+  }
+
+  setRoleFilter(event: Event): void {
+    const value = (event.target as HTMLSelectElement).value;
+    if (value === 'ALL' || value === 'ADMINISTRATOR' || value === 'DENTIST' ||
+        value === 'SECRETARY_ASSISTANT') this.roleFilter.set(value);
+  }
+
+  roleCount(role: StaffRole): number {
+    return this.page()?.data.filter((member) => member.roles.includes(role)).length ?? 0;
+  }
+
+  roleLabel(role: StaffRole): string {
+    switch (role) {
+      case 'ADMINISTRATOR': return 'Administrador';
+      case 'DENTIST': return 'Odontólogo';
+      case 'SECRETARY_ASSISTANT': return 'Secretario auxiliar';
+    }
+  }
+
+  initials(name: string): string {
+    return name.trim().split(/\s+/).slice(0, 2).map((part) => part[0]?.toUpperCase() ?? '').join('');
   }
 
   statusLabel(status: StaffStatus): string {
