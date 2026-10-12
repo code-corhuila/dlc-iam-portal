@@ -36,6 +36,11 @@ export type StaffEnableResult =
   | { readonly kind: 'invalid' | 'conflict' | 'forbidden' | 'not-found' |
       'session-expired' | 'unavailable' };
 
+export type StaffUnlockResult =
+  | { readonly kind: 'unlocked'; readonly staff: Staff }
+  | { readonly kind: 'invalid' | 'invalid-record' | 'invalid-key' | 'conflict' | 'forbidden' | 'not-found' |
+      'session-expired' | 'unavailable' };
+
 export type StaffRolesResult =
   | { readonly kind: 'assigned'; readonly staff: Staff }
   | { readonly kind: 'invalid' | 'conflict' | 'forbidden' | 'not-found' |
@@ -80,6 +85,39 @@ function isStaffPage(value: unknown): value is StaffPage {
 @Injectable()
 export class StaffDirectoryService {
   private readonly context = inject(IAM_PORTAL_CONTEXT);
+
+  async unlock(member: Staff, reason: string, key: string): Promise<StaffUnlockResult> {
+    const trimmedReason = reason.trim();
+    if (!uuidPattern.test(member.id) || member.status !== 'LOCKED' ||
+        !Number.isInteger(member.version) || member.version < 1) return { kind: 'invalid-record' };
+    if (!trimmedReason || trimmedReason.length > 1000) return { kind: 'invalid' };
+    if (!uuidPattern.test(key)) return { kind: 'invalid-key' };
+    if (this.context.signal.aborted) return { kind: 'unavailable' };
+    try {
+      const result = await this.context.http.request({
+        method: 'POST', path: `/api/v1/auth/staff/${member.id}/unlocks`,
+        body: { reason: trimmedReason, expectedVersion: member.version },
+        headers: { 'Idempotency-Key': key }, signal: this.context.signal,
+      });
+      if (this.context.signal.aborted) return { kind: 'unavailable' };
+      if (!result.ok) {
+        return { kind: result.status === 400 ? 'invalid' :
+          result.status === 401 ? 'session-expired' :
+          result.status === 403 ? 'forbidden' :
+          result.status === 404 ? 'not-found' :
+          result.status === 409 ? 'conflict' : 'unavailable' };
+      }
+      if (result.status !== 200 || !isStaff(result.data) ||
+          result.data.id.toLowerCase() !== member.id.toLowerCase() ||
+          (result.data.status !== 'ACTIVE' && result.data.status !== 'PENDING_VERIFICATION') ||
+          result.data.version <= member.version) {
+        return { kind: 'unavailable' };
+      }
+      return { kind: 'unlocked', staff: result.data };
+    } catch {
+      return { kind: 'unavailable' };
+    }
+  }
 
   async assignRoles(member: Staff, selected: readonly AssignableStaffRole[],
     reason: string): Promise<StaffRolesResult> {
