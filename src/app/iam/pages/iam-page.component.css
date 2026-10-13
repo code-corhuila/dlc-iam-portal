@@ -22,6 +22,7 @@
     var(--iam-clinic-background) center top / cover no-repeat;
 }
 
+/* The approved auth mockups intentionally show a wider login card than recovery. */
 dlc-sign-in-form {
   display: block;
   width: min(100%, 400px);
