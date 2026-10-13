@@ -8,36 +8,53 @@ import { IamApiService } from '../data/iam-api.service';
   styleUrl: './recover-password.component.css',
   template: `
     <div class="recovery-card">
+      <span class="recovery-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+          stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="8" cy="12" r="4" />
+          <path d="M12 12h8m-3 0v3m3-3v2" />
+        </svg>
+      </span>
       <h1>Recuperar contraseña</h1>
       @if (submitted) {
         <p role="status">Si la cuenta existe, recibirás instrucciones en tu correo.</p>
       } @else {
-        <p>Ingresa el correo de tu cuenta de personal.</p>
+        <p>Ingresa el correo de tu cuenta de personal para recibir instrucciones.</p>
         <form (submit)="submit($event)">
           <label for="iam-recovery-email">Correo electrónico</label>
-          <input
-            id="iam-recovery-email"
-            name="email"
-            type="email"
-            autocomplete="email"
-            [value]="email"
-            (input)="email = $any($event.target).value"
-            required
-          />
+          <div class="recovery-email-field">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+              stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <rect x="3" y="5" width="18" height="14" rx="2" />
+              <path d="m4 7 8 6 8-6" />
+            </svg>
+            <input
+              id="iam-recovery-email"
+              name="email"
+              type="email"
+              autocomplete="email"
+              placeholder="correo@clinica.com"
+              [value]="email"
+              (input)="email = $any($event.target).value"
+              required
+            />
+          </div>
           <button type="submit" [disabled]="loading">Enviar instrucciones</button>
           @if (errorMessage) {
             <p role="alert">{{ errorMessage }}</p>
           }
         </form>
       }
-      <button type="button" class="text-link" (click)="verifyEmail.emit()">
-        Ya tengo un código de verificación
-      </button>
-      <button type="button" class="text-link" (click)="backToLogin.emit()">
-        Volver a iniciar sesión
-      </button>
-      <button type="button" class="text-link" (click)="resetPassword.emit()">
-        Ya tengo un código de recuperación
+      <div class="recovery-code-links">
+        <button type="button" class="text-link" (click)="verifyEmail.emit()">
+          Ya tengo un código de verificación
+        </button>
+        <button type="button" class="text-link" (click)="resetPassword.emit()">
+          Ya tengo un código de recuperación
+        </button>
+      </div>
+      <button type="button" class="text-link back-link" (click)="backToLogin.emit()">
+        <span aria-hidden="true">←</span> Volver a iniciar sesión
       </button>
     </div>
   `,

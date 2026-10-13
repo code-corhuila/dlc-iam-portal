@@ -15,6 +15,8 @@ import { IamApiService } from '../data/iam-api.service';
         id="sign-in-email"
         name="email"
         type="email"
+        autocomplete="username"
+        placeholder="correo@clinica.com"
         [value]="email"
         (input)="email = $any($event.target).value"
         required
@@ -25,6 +27,7 @@ import { IamApiService } from '../data/iam-api.service';
         id="sign-in-password"
         name="password"
         type="password"
+        autocomplete="current-password"
         [value]="password"
         (input)="password = $any($event.target).value"
         required
