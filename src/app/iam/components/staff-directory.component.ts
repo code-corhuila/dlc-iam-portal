@@ -16,6 +16,7 @@ import { StaffUnlockComponent } from './staff-unlock.component';
   styleUrl: './staff-directory.component.css',
   template: `
     <section class="directory" aria-label="Administración de personal">
+      <div class="directory-content" [attr.inert]="creating() ? '' : null">
       <header class="page-heading">
         <p class="eyebrow">Administración</p>
         <div class="heading-row">
@@ -23,16 +24,14 @@ import { StaffUnlockComponent } from './staff-unlock.component';
             <h1>Gestión de usuarios y roles</h1>
             <p class="subtitle">Gestiona el acceso, los permisos y los roles del personal de la clínica.</p>
           </div>
-          @if (!creating() && !selectedId() && page()) {
+          @if (!selectedId() && page()) {
             <button class="primary-action" type="button" (click)="creating.set(true)">
               <span aria-hidden="true">＋</span> Agregar nuevo usuario
             </button>
           }
         </div>
       </header>
-      @if (creating()) {
-        <dlc-staff-create (close)="closeCreate()" />
-      } @else if (selectedId()) {
+      @if (selectedId()) {
         <button class="back-button" type="button" (click)="closeDetail()">← Volver al listado</button>
         <section class="detail-card" aria-label="Detalle de personal">
           @if (detailState() === 'loading') {
@@ -158,7 +157,11 @@ import { StaffUnlockComponent } from './staff-unlock.component';
                       [class.status-pending]="member.status === 'PENDING_VERIFICATION'"
                       [class.status-locked]="member.status === 'LOCKED'">{{ statusLabel(member.status) }}</span></td>
                     <td><button class="detail-button" type="button" (click)="openDetail(member.id)"
-                      [attr.aria-label]="'Ver detalle de ' + member.name">Ver detalle <span aria-hidden="true">→</span></button></td>
+                      [attr.aria-label]="'Ver detalle de ' + member.name">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
+                        <path d="m4 16-.5 4 4-.5L19 8a2 2 0 0 0-3-3L4 16Z"/>
+                      </svg><span aria-hidden="true">⋮</span>
+                    </button></td>
                   </tr>
                 } @empty {
                   <tr><td class="empty" colspan="5" role="status">
@@ -176,6 +179,15 @@ import { StaffUnlockComponent } from './staff-unlock.component';
               (click)="load(result.meta.page + 1)">Siguiente</button>
           </nav>
         </section>
+      }
+      </div>
+      @if (creating()) {
+        <div class="modal-backdrop">
+          <div class="create-dialog" role="dialog" aria-modal="true"
+            aria-labelledby="staff-create-title" aria-describedby="staff-create-subtitle">
+            <dlc-staff-create (close)="closeCreate()" />
+          </div>
+        </div>
       }
     </section>
   `,
