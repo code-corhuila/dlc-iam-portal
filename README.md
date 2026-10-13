@@ -12,7 +12,7 @@ For a locked staff record, `/app/administration` can request an audited unlock t
 
 When the shell selects the IAM portal for `/app/sessions` with local path `/`, `entry.js` renders the own-sessions screen. It uses shared shell HTTP to list sessions and request device revocation through Auth with an idempotency key. It handles denied, expired, conflict, and uncertain outcomes without creating a second session store. The shell's route selection and live Auth/Gateway behavior remain to be verified or integrated separately.
 
-CI runs the skeleton check, unit tests, the guarded standalone production build, and `npm run build:portal`. The latter emits `entry.js` and its clinic image together and rejects bundled preview credentials. The standalone production entry deliberately blocks startup. Native Federation configuration remains a legacy scaffold placeholder; the browser-module boundary follows [DLC-FRONT composition contract v1](https://github.com/code-corhuila/ods-docs/blob/main/05-architecture/frontend-composition.md).
+CI runs the skeleton check, unit tests, the guarded standalone production build, and `npm run build:portal`. Both `npm run build` and `npm run build:portal` package the supported browser module, emitting `entry.js` and its clinic image together while rejecting bundled preview credentials. The standalone production entry deliberately blocks startup. Native Federation configuration remains a legacy scaffold placeholder; the browser-module boundary follows [DLC-FRONT composition contract v1](https://github.com/code-corhuila/ods-docs/blob/main/05-architecture/frontend-composition.md).
 
 ## Local verification
 
