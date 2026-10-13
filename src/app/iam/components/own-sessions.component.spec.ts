@@ -38,6 +38,20 @@ describe('OwnSessionsComponent', () => {
     expect(host.querySelectorAll<HTMLButtonElement>('nav button')[1]?.disabled).toBe(false);
   });
 
+  it('groups the session summary and marks the current device', async () => {
+    const list = vi.fn().mockResolvedValue({ kind: 'loaded', page });
+    const { fixture, host } = await render(list);
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(host.querySelector('.page-heading h1')?.textContent).toBe('Mis sesiones');
+    expect(host.querySelector('[aria-label="Resumen de sesiones"] strong')?.textContent).toBe('1');
+    const currentCard = host.querySelector('.session-list > li.session-card--current');
+    expect(currentCard?.querySelector('h3')?.textContent).toBe(session.device);
+    expect(currentCard?.querySelector('.current')?.textContent).toBe('Sesión actual');
+    expect(currentCard?.textContent).toContain('Vence');
+  });
+
   it.each([
     ['forbidden', 'No tienes permiso'],
     ['session-expired', 'La sesión terminó'],
@@ -49,6 +63,26 @@ describe('OwnSessionsComponent', () => {
     fixture.detectChanges();
     expect(host.querySelector('[role="alert"]')?.textContent).toContain(message);
     expect(host.textContent).not.toContain(session.id);
+  });
+
+  it('announces a load failure without putting the retry button inside the alert', async () => {
+    const list = vi.fn().mockResolvedValueOnce({ kind: 'unavailable' })
+      .mockResolvedValueOnce({ kind: 'loaded', page });
+    const { fixture, host } = await render(list);
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const alert = host.querySelector('[role="alert"]');
+    const retry = host.querySelector<HTMLButtonElement>('.state-card button');
+    expect(alert?.textContent).toContain('No se pudieron cargar tus sesiones.');
+    expect(retry?.textContent).toBe('Reintentar');
+    expect(alert?.contains(retry ?? null)).toBe(false);
+
+    retry?.click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(list).toHaveBeenCalledTimes(2);
+    expect(host.querySelector('[aria-label="Resumen de sesiones"]')).not.toBeNull();
   });
 
   it('ignores a stale page response after a newer page was requested', async () => {
@@ -79,6 +113,17 @@ describe('OwnSessionsComponent', () => {
     textarea.dispatchEvent(new Event('input', { bubbles: true }));
     return { ...result, textarea, form };
   }
+
+  it('closes the confirmation form without revoking when canceled', async () => {
+    const list = vi.fn().mockResolvedValue({ kind: 'loaded', page });
+    const revoke = vi.fn();
+    const { fixture, host, form } = await openRevoke(list, revoke);
+
+    form.querySelector<HTMLButtonElement>('button[type="button"]')?.click();
+    fixture.detectChanges();
+    expect(host.querySelector('form[aria-label="Revocar sesión"]')).toBeNull();
+    expect(revoke).not.toHaveBeenCalled();
+  });
 
   it('submits once while saving and reloads after Auth confirms revocation', async () => {
     let finish!: (result: { kind: 'revoked' }) => void;
