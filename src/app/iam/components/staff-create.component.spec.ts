@@ -15,7 +15,7 @@ describe('StaffCreateComponent', () => {
     const form = host.querySelector('form');
     if (!form) throw new Error('Create form is missing');
     for (const [name, value] of Object.entries({
-      name: 'Ana Pérez', email: 'ana@example.test', password: 'StrongPass1',
+      name: 'Ana', surname: 'Pérez', email: 'ana@example.test', password: 'StrongPass1',
     })) {
       const input = form.querySelector<HTMLInputElement>(`input[name="${name}"]`);
       if (!input) throw new Error(`${name} input is missing`);
@@ -37,6 +37,39 @@ describe('StaffCreateComponent', () => {
     expect(form.checkValidity()).toBe(false);
     submit();
     expect(create).not.toHaveBeenCalled();
+  });
+
+  it('requires a surname and sends the combined name through the approved contract', async () => {
+    const create = vi.fn().mockResolvedValue({ kind: 'created', staff: { id: 'created' } });
+    const { fixture, form, submit } = await render(create);
+    const givenName = form.querySelector<HTMLInputElement>('input[name="name"]');
+    const surname = form.querySelector<HTMLInputElement>('input[name="surname"]');
+    expect(surname).not.toBeNull();
+    if (!givenName || !surname) return;
+
+    givenName.value = ' Ana ';
+    surname.value = '';
+    submit();
+    expect(create).not.toHaveBeenCalled();
+
+    surname.value = ' Pérez ';
+    submit();
+    await fixture.whenStable();
+    expect(create).toHaveBeenCalledWith(expect.objectContaining({ name: 'Ana Pérez' }), expect.any(String));
+  });
+
+  it('shows unsupported document and mobile fields as unavailable without sending them', async () => {
+    const create = vi.fn().mockResolvedValue({ kind: 'created', staff: { id: 'created' } });
+    const { fixture, form, submit } = await render(create);
+    const document = form.querySelector<HTMLInputElement>('input[name="document"]');
+    const mobile = form.querySelector<HTMLInputElement>('input[name="mobile"]');
+    expect(document?.disabled).toBe(true);
+    expect(mobile?.disabled).toBe(true);
+    expect(form.textContent).toContain('Aún no disponible');
+
+    submit();
+    await fixture.whenStable();
+    expect(Object.keys(create.mock.calls[0][0]).sort()).toEqual(['email', 'name', 'password', 'role']);
   });
 
   it('submits the permitted role and hides the password after creation', async () => {
