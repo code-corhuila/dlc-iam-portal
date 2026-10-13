@@ -28,13 +28,11 @@ dlc-sign-in-form {
   width: min(100%, 400px);
 }
 
-.auth-status {
-  display: block;
-  width: min(100%, 400px);
-}
-
+/* This status replaces the login form after authentication; recovery has its own card. */
 .auth-status {
   box-sizing: border-box;
+  display: block;
+  width: min(100%, 400px);
   padding: 34px 30px 30px;
   border: 1px solid rgba(226, 232, 238, .9);
   border-radius: 14px;

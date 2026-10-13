@@ -6,7 +6,7 @@
     "check:skeleton": "node scripts/check-skeleton.mjs",
     "test": "ng test --watch=false",
     "build:portal": "ng run dlc-iam-portal:portal-module && node scripts/package-portal.mjs",
-    "build": "ng build",
+    "build": "npm run build:portal",
     "start": "ng serve"
   },
   "dependencies": {
