@@ -21,8 +21,8 @@ import type { OwnSession, OwnSessionPage } from '../model/session';
       } @else if (state() === 'session-expired') {
         <p class="state-card" role="alert">La sesión terminó. Inicia sesión de nuevo.</p>
       } @else if (state() === 'error') {
-        <div class="state-card" role="alert">
-          <p>No se pudieron cargar tus sesiones.</p>
+        <div class="state-card">
+          <p role="alert">No se pudieron cargar tus sesiones.</p>
           <button type="button" (click)="load(requestedPage)">Reintentar</button>
         </div>
       } @else if (page(); as result) {
