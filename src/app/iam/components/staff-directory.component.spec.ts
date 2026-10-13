@@ -53,6 +53,33 @@ describe('StaffDirectoryComponent', () => {
     expect(host.textContent).toContain('Deshabilitado');
   });
 
+  it('shows page-scoped role metrics and filters the visible directory', async () => {
+    const dentist = {
+      id: 'a3f80675-6c3d-4f10-8d78-60ed82da53a7', name: 'Ana Pérez',
+      email: 'ana@example.test', roles: ['DENTIST'], status: 'ACTIVE', version: 1,
+    };
+    const admin = {
+      ...dentist, id: 'a3f80675-6c3d-4f10-8d78-60ed82da53a8',
+      name: 'Luis Gómez', roles: ['ADMINISTRATOR'],
+    };
+    const page = {
+      data: [dentist, admin], meta: { page: 1, limit: 20, total: 24, totalPages: 2 },
+    };
+    const { fixture, host } = await render(vi.fn().mockResolvedValue({ kind: 'loaded', page }));
+    expect(host.querySelector('h1')?.textContent).toContain('Gestión de usuarios y roles');
+    expect([...host.querySelectorAll('.metric-card strong')].map((node) => node.textContent))
+      .toEqual(['24', '1', '1']);
+    expect(host.textContent).not.toContain('ADMINISTRATOR');
+    const filter = host.querySelector<HTMLSelectElement>('#staff-role-filter');
+    if (!filter) throw new Error('Role filter is missing');
+    filter.value = 'DENTIST';
+    filter.dispatchEvent(new Event('change'));
+    fixture.detectChanges();
+    expect(host.querySelectorAll('tbody tr')).toHaveLength(1);
+    expect(host.querySelector('tbody')?.textContent).toContain('Ana Pérez');
+    expect(host.querySelector('tbody')?.textContent).not.toContain('Luis Gómez');
+  });
+
   it.each([
     ['forbidden', 'No tienes permiso'],
     ['session-expired', 'La sesión terminó'],
@@ -60,7 +87,7 @@ describe('StaffDirectoryComponent', () => {
   ])('shows the %s state without staff data', async (kind, message) => {
     const { host } = await render(vi.fn().mockResolvedValue({ kind }));
     expect(host.querySelector('[role="alert"]')?.textContent).toContain(message);
-    expect(host.querySelector('ul')).toBeNull();
+    expect(host.querySelector('table')).toBeNull();
   });
 
   it('ignores an older page response after a newer request', async () => {
@@ -91,17 +118,17 @@ describe('StaffDirectoryComponent', () => {
     const page = { data: [member], meta: { page: 1, limit: 20, total: 1, totalPages: 1 } };
     const read = vi.fn().mockResolvedValue({ kind: 'loaded', staff: member });
     const { fixture, host } = await render(vi.fn().mockResolvedValue({ kind: 'loaded', page }), read);
-    host.querySelector<HTMLButtonElement>('li button')?.click();
+    host.querySelector<HTMLButtonElement>('tbody button')?.click();
     await fixture.whenStable();
     fixture.detectChanges();
 
     expect(read).toHaveBeenCalledWith(member.id);
     expect(host.querySelector('section[aria-label="Detalle de personal"]')?.textContent)
       .toContain('Deshabilitado');
-    expect(host.querySelector('ul')).toBeNull();
-    host.querySelector<HTMLButtonElement>('button')?.click();
+    expect(host.querySelector('table')).toBeNull();
+    host.querySelector<HTMLButtonElement>('.back-button')?.click();
     fixture.detectChanges();
-    expect(host.querySelector('ul')).not.toBeNull();
+    expect(host.querySelector('table')).not.toBeNull();
   });
 
   it('updates the detail and list after a successful name edit', async () => {
@@ -117,7 +144,7 @@ describe('StaffDirectoryComponent', () => {
       vi.fn().mockResolvedValue({ kind: 'loaded', page }),
       vi.fn().mockResolvedValue({ kind: 'loaded', staff: member }), updateName,
     );
-    host.querySelector<HTMLButtonElement>('li button')?.click();
+    host.querySelector<HTMLButtonElement>('tbody button')?.click();
     await fixture.whenStable();
     fixture.detectChanges();
     host.querySelector<HTMLButtonElement>('section[aria-label="Detalle de personal"] button')?.click();
@@ -132,9 +159,9 @@ describe('StaffDirectoryComponent', () => {
     expect(updateName).toHaveBeenCalledWith(member.id, 'Ana Pérez', 2);
     expect(host.querySelector('h2')?.textContent).toContain('Ana Pérez');
     expect(host.querySelector('dlc-staff-edit')).toBeNull();
-    host.querySelector<HTMLButtonElement>('section.directory > button')?.click();
+    host.querySelector<HTMLButtonElement>('.back-button')?.click();
     fixture.detectChanges();
-    expect(host.querySelector('li strong')?.textContent).toContain('Ana Pérez');
+    expect(host.querySelector('tbody .person strong')?.textContent).toContain('Ana Pérez');
   });
 
   it('updates the detail and list after Auth disables a staff member', async () => {
@@ -150,7 +177,7 @@ describe('StaffDirectoryComponent', () => {
       vi.fn().mockResolvedValue({ kind: 'loaded', page }),
       vi.fn().mockResolvedValue({ kind: 'loaded', staff: member }), vi.fn(), disable,
     );
-    host.querySelector<HTMLButtonElement>('li button')?.click();
+    host.querySelector<HTMLButtonElement>('tbody button')?.click();
     await fixture.whenStable();
     fixture.detectChanges();
     const disableButton = [...host.querySelectorAll<HTMLButtonElement>('button')]
@@ -171,9 +198,9 @@ describe('StaffDirectoryComponent', () => {
       .toContain('Deshabilitado');
     expect([...host.querySelectorAll<HTMLButtonElement>('button')]
       .some((button) => button.textContent?.includes('Deshabilitar personal'))).toBe(false);
-    host.querySelector<HTMLButtonElement>('section.directory > button')?.click();
+    host.querySelector<HTMLButtonElement>('.back-button')?.click();
     fixture.detectChanges();
-    expect(host.querySelector('li')?.textContent).toContain('Deshabilitado');
+    expect(host.querySelector('tbody tr')?.textContent).toContain('Deshabilitado');
   });
 
   it('updates the detail and list when Auth enables an unverified member', async () => {
@@ -189,7 +216,7 @@ describe('StaffDirectoryComponent', () => {
       vi.fn().mockResolvedValue({ kind: 'loaded', page }),
       vi.fn().mockResolvedValue({ kind: 'loaded', staff: member }), vi.fn(), vi.fn(), enable,
     );
-    host.querySelector<HTMLButtonElement>('li button')?.click();
+    host.querySelector<HTMLButtonElement>('tbody button')?.click();
     await fixture.whenStable();
     fixture.detectChanges();
     const enableButton = [...host.querySelectorAll<HTMLButtonElement>('button')]
@@ -208,9 +235,9 @@ describe('StaffDirectoryComponent', () => {
     expect(host.querySelector('dlc-staff-enable')).toBeNull();
     expect(host.querySelector('section[aria-label="Detalle de personal"]')?.textContent)
       .toContain('Pendiente de verificación');
-    host.querySelector<HTMLButtonElement>('section.directory > button')?.click();
+    host.querySelector<HTMLButtonElement>('.back-button')?.click();
     fixture.detectChanges();
-    expect(host.querySelector('li')?.textContent).toContain('Pendiente de verificación');
+    expect(host.querySelector('tbody tr')?.textContent).toContain('Pendiente de verificación');
   });
 
   it('offers unlock only for locked staff and updates the detail after Auth confirms it', async () => {
@@ -227,7 +254,7 @@ describe('StaffDirectoryComponent', () => {
       vi.fn().mockResolvedValue({ kind: 'loaded', staff: member }),
       vi.fn(), vi.fn(), vi.fn(), vi.fn(), unlock,
     );
-    host.querySelector<HTMLButtonElement>('li button')?.click();
+    host.querySelector<HTMLButtonElement>('tbody button')?.click();
     await fixture.whenStable();
     fixture.detectChanges();
     [...host.querySelectorAll<HTMLButtonElement>('button')]
@@ -263,7 +290,7 @@ describe('StaffDirectoryComponent', () => {
       vi.fn().mockResolvedValue({ kind: 'loaded', staff: member }),
       vi.fn(), vi.fn(), vi.fn(), assignRoles,
     );
-    host.querySelector<HTMLButtonElement>('li button')?.click();
+    host.querySelector<HTMLButtonElement>('tbody button')?.click();
     await fixture.whenStable();
     fixture.detectChanges();
     [...host.querySelectorAll<HTMLButtonElement>('button')]
@@ -284,10 +311,10 @@ describe('StaffDirectoryComponent', () => {
       ['SECRETARY_ASSISTANT'], 'Cambio aprobado');
     expect(host.querySelector('dlc-staff-roles')).toBeNull();
     expect(host.querySelector('section[aria-label="Detalle de personal"]')?.textContent)
-      .toContain('SECRETARY_ASSISTANT');
-    host.querySelector<HTMLButtonElement>('section.directory > button')?.click();
+      .toContain('Secretario auxiliar');
+    host.querySelector<HTMLButtonElement>('.back-button')?.click();
     fixture.detectChanges();
-    expect(host.querySelector('li')?.textContent).toContain('SECRETARY_ASSISTANT');
+    expect(host.querySelector('tbody tr')?.textContent).toContain('Secretario auxiliar');
   });
 
   it('does not show a detail that arrives after returning to the list', async () => {
@@ -300,9 +327,9 @@ describe('StaffDirectoryComponent', () => {
     let resolveRead!: (value: unknown) => void;
     const read = vi.fn().mockImplementation(() => new Promise((resolve) => { resolveRead = resolve; }));
     const { fixture, host } = await render(vi.fn().mockResolvedValue({ kind: 'loaded', page }), read);
-    host.querySelector<HTMLButtonElement>('li button')?.click();
+    host.querySelector<HTMLButtonElement>('tbody button')?.click();
     fixture.detectChanges();
-    host.querySelector<HTMLButtonElement>('button')?.click();
+    host.querySelector<HTMLButtonElement>('.back-button')?.click();
     resolveRead({ kind: 'loaded', staff: member });
     await fixture.whenStable();
     fixture.detectChanges();
@@ -313,7 +340,7 @@ describe('StaffDirectoryComponent', () => {
     const page = { data: [], meta: { page: 1, limit: 20, total: 0, totalPages: 0 } };
     const list = vi.fn().mockResolvedValue({ kind: 'loaded', page });
     const { fixture, host } = await render(list);
-    host.querySelector<HTMLButtonElement>('button')?.click();
+    host.querySelector<HTMLButtonElement>('.primary-action')?.click();
     fixture.detectChanges();
     expect(host.querySelector('dlc-staff-create form')).not.toBeNull();
     host.querySelector<HTMLButtonElement>('dlc-staff-create button[type="button"]')?.click();
