@@ -1,35 +1,42 @@
-\# dlc-iam-portal
+# DLC IAM Portal
 
+Angular 21 IAM portal with a standalone HU-IAM-001 development preview, a browser-module entry for `dlc-front`, and HU-IAM-004 password-recovery and reset screens.
 
+## Current state
 
-> iam bounded context: web UI (remote)
+The standalone development preview does not contact Auth or establish a session. Its sign-in form shows a generic error because the shell session capability is unavailable there. The preview includes the Di Lucca header and footer.
 
+The separate `entry.js` module implements the v1 `mount`/`updateRoute`/`canLeave`/`unmount` boundary. For the accepted interim development/QA login decision, it asks the IAM-only `dlc-front` session capability to complete `AuthLogin`; the portal never handles tokens or creates a session. Auth and `dlc-front` must implement and verify the revised contract before this login works live. The `/recover-password` route sends a recovery request through the shared HTTP capability and displays a generic acknowledgement without revealing account existence. `/recover-password/reset` accepts a manually entered recovery token and new password without putting the token in the URL; Auth validates and consumes the token, changes the password, and revokes sessions. `/recover-password/verify-email` accepts a manually entered verification token without putting it in the URL; Auth validates and consumes it. `/app/administration` lists, reads, creates, edits names and roles, and requests staff disabling and enabling through Auth, with loading and denied/failure states. Name edits send the record version to detect conflicts; email and status are not writable through that form. Role edits send allowed roles, a reason, and the record version; Auth enforces Administrator authorization, auditing, and session revocation. Disabling and enabling send a reason, expected version, and idempotency key; Auth enforces authorization, audit, account checks, and session revocation. Enabling does not restore revoked sessions, and an unverified account remains pending verification. Creation is limited to Dentist or Secretary Assistant and starts in pending verification; Auth enforces Administrator authorization. Unknown IAM local routes display a local 404. The shell, portal and Auth have not yet been verified together with live Gateway responses; Docker acceptance remains pending. MFA is deferred to a later delivery.
 
+For a locked staff record, `/app/administration` can request an audited unlock through Auth with a reason, expected version, and idempotency key. Auth decides authorization and account eligibility; the portal does not unlock disabled or unverified records through this form.
 
-Part of the \*\*LMS Library\*\* distributed system — team `lms-library`, Grupo 2. Governance and documentation live in \[`library-docs`](https://github.com/code-corhuila/library-docs).
+When the shell selects the IAM portal for `/app/sessions` with local path `/`, `entry.js` renders the own-sessions screen. It uses shared shell HTTP to list sessions and request device revocation through Auth with an idempotency key. It handles denied, expired, conflict, and uncertain outcomes without creating a second session store. The shell's route selection and live Auth/Gateway behavior remain to be verified or integrated separately.
 
+CI runs the skeleton check, unit tests, the guarded standalone production build, and `npm run build:portal`. Both `npm run build` and `npm run build:portal` package the supported browser module, emitting `entry.js` and its clinic image together while rejecting bundled preview credentials. The standalone production entry deliberately blocks startup. Native Federation configuration remains a legacy scaffold placeholder; the browser-module boundary follows [DLC-FRONT composition contract v1](https://github.com/code-corhuila/ods-docs/blob/main/05-architecture/frontend-composition.md).
 
+## Local verification
 
-\## Branching
+```bash
+npm run check:skeleton
+npm test
+npx ng run dlc-iam-portal:build-original:production
+npm run build:portal
+npx ng run dlc-iam-portal:serve-original
+```
 
+These checks do not validate the live Gateway, Docker deployment, email delivery, interim login, or browser session flow.
 
+## Future responsibilities
 
-Three permanent branches. \*\*None of them accepts a direct commit\*\* — you enter through a child branch and leave through a Pull Request.
-develop  <--PR--  feat/... fix/... chore/...
+- `src/app/iam/components/`: sign-in, password-recovery request and reset, and email-verification forms; MFA is a future requirement.
+- `src/app/iam/data/`: IAM API port, development-only fake adapter, and shell HTTP adapter.
+- `src/app/iam/model/`: types based on the IAM OpenAPI contract.
+- `src/app/iam/pages/`: IAM pages.
+- `src/portal-entry.ts`: browser-module lifecycle for the compositor.
+- `src/app/shell-contract.ts`: framework-neutral integration types.
 
-qa       <--PR--  qa/...
+`dlc-front` owns the browser session, shared HTTP client, and Gateway URL. The portal does not create or store sessions. `.github/CODEOWNERS` already existed on the base branch and was retained.
 
-main     <--PR--  release/...  hotfix/...
+## Governance
 
-
-
-Promotion happens \*\*by re-application\*\* (`git cherry-pick -x`), never by merging one permanent branch into another: `merge develop -> qa` and `merge qa -> main` do not exist in this model.
-
-
-
-`main` requires \*\*1 approval from `ariel5253`\*\*. On `develop` and `qa` the team sets its own review rule.
-
-
-
-Full policy: `00-governance/branching-policy.md` in `library-docs`.
-
+Branching, review, and promotion rules are in the [Di Lucca branching policy](https://github.com/code-corhuila/ods-docs/blob/main/00-governance/branching-policy.md).

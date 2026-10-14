@@ -1,0 +1,64 @@
+:host {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+}
+
+.iam-auth-surface {
+  --iam-primary: #20a99a;
+  --iam-primary-hover: #168e82;
+  --iam-focus: #1554a3;
+  --iam-border: #d6dee2;
+  --iam-title: #1f2933;
+  --iam-copy: #35616a;
+  box-sizing: border-box;
+  display: flex;
+  flex: 1;
+  align-items: center;
+  min-height: 480px;
+  padding: 32px clamp(24px, 8vw, 128px);
+  background:
+    linear-gradient(90deg, rgba(245, 252, 253, .2), transparent 65%),
+    var(--iam-clinic-background) center top / cover no-repeat;
+}
+
+/* The approved auth mockups intentionally show a wider login card than recovery. */
+dlc-sign-in-form {
+  display: block;
+  width: min(100%, 400px);
+}
+
+/* This status replaces the login form after authentication; recovery has its own card. */
+.auth-status {
+  box-sizing: border-box;
+  display: block;
+  width: min(100%, 400px);
+  padding: 34px 30px 30px;
+  border: 1px solid rgba(226, 232, 238, .9);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, .96);
+  box-shadow: 0 14px 30px rgba(17, 57, 70, .17);
+  color: #1f2933;
+  font-family: Inter, system-ui, sans-serif;
+  text-align: center;
+}
+
+.auth-status h1 {
+  margin: 12px 0 6px;
+  color: #20a99a;
+  font-size: 24px;
+  line-height: 1.25;
+}
+
+.auth-status p {
+  margin: 0;
+  color: #35616a;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+@media (max-width: 720px) {
+  .iam-auth-surface {
+    padding: 24px 16px;
+  }
+}

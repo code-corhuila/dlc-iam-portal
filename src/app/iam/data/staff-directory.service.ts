@@ -1,0 +1,329 @@
+import { Injectable, inject } from '@angular/core';
+import { IAM_PORTAL_CONTEXT } from './shell-iam-api.service';
+import { ASSIGNABLE_STAFF_ROLES, type AssignableStaffRole, type Staff, type StaffPage } from '../model/staff';
+
+export type StaffListResult =
+  | { readonly kind: 'loaded'; readonly page: StaffPage }
+  | { readonly kind: 'forbidden' | 'session-expired' | 'unavailable' };
+
+export type StaffReadResult =
+  | { readonly kind: 'loaded'; readonly staff: Staff }
+  | { readonly kind: 'forbidden' | 'not-found' | 'session-expired' | 'unavailable' };
+
+export interface StaffCreateInput {
+  readonly email: string;
+  readonly password: string;
+  readonly name: string;
+  readonly role: 'DENTIST' | 'SECRETARY_ASSISTANT';
+}
+
+export type StaffCreateResult =
+  | { readonly kind: 'created'; readonly staff: Staff }
+  | { readonly kind: 'invalid' | 'conflict' | 'forbidden' | 'session-expired' | 'unavailable' };
+
+export type StaffUpdateResult =
+  | { readonly kind: 'updated'; readonly staff: Staff }
+  | { readonly kind: 'invalid' | 'conflict' | 'forbidden' | 'not-found' |
+      'session-expired' | 'unavailable' };
+
+export type StaffDisableResult =
+  | { readonly kind: 'disabled'; readonly staff: Staff }
+  | { readonly kind: 'invalid' | 'conflict' | 'forbidden' | 'not-found' |
+      'session-expired' | 'unavailable' };
+
+export type StaffEnableResult =
+  | { readonly kind: 'enabled'; readonly staff: Staff }
+  | { readonly kind: 'invalid' | 'conflict' | 'forbidden' | 'not-found' |
+      'session-expired' | 'unavailable' };
+
+export type StaffUnlockResult =
+  | { readonly kind: 'unlocked'; readonly staff: Staff }
+  | { readonly kind: 'invalid' | 'invalid-record' | 'invalid-key' | 'conflict' | 'forbidden' | 'not-found' |
+      'session-expired' | 'unavailable' };
+
+export type StaffRolesResult =
+  | { readonly kind: 'assigned'; readonly staff: Staff }
+  | { readonly kind: 'invalid' | 'conflict' | 'forbidden' | 'not-found' |
+      'session-expired' | 'unavailable' };
+
+function record(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+const roles = new Set(['ADMINISTRATOR', 'DENTIST', 'SECRETARY_ASSISTANT']);
+const statuses = new Set(['PENDING_VERIFICATION', 'ACTIVE', 'LOCKED', 'DISABLED']);
+const staffKeys = new Set(['id', 'email', 'name', 'roles', 'status', 'version', 'createdAt', 'updatedAt']);
+const pageLimit = 20;
+const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function isStaff(value: unknown): value is Staff {
+  if (!record(value)) return false;
+  return Object.keys(value).every((key) => staffKeys.has(key)) &&
+    typeof value['id'] === 'string' &&
+    uuidPattern.test(value['id']) &&
+    typeof value['email'] === 'string' && value['email'].length > 0 &&
+    typeof value['name'] === 'string' && value['name'].length > 0 && value['name'].length <= 100 &&
+    Array.isArray(value['roles']) && value['roles'].every((role: unknown) => roles.has(role as string)) &&
+    typeof value['status'] === 'string' && statuses.has(value['status']) &&
+    Number.isInteger(value['version']) && (value['version'] as number) >= 1 &&
+    (value['createdAt'] === undefined ||
+      (typeof value['createdAt'] === 'string' && Number.isFinite(Date.parse(value['createdAt'])))) &&
+    (value['updatedAt'] === undefined ||
+      (typeof value['updatedAt'] === 'string' && Number.isFinite(Date.parse(value['updatedAt']))));
+}
+
+function isStaffPage(value: unknown): value is StaffPage {
+  if (!record(value) || Object.keys(value).some((key) => key !== 'data' && key !== 'meta')) return false;
+  const meta = value['meta'];
+  return Array.isArray(value['data']) && value['data'].every(isStaff) && record(meta) &&
+    Number.isInteger(meta['page']) && (meta['page'] as number) >= 1 &&
+    Number.isInteger(meta['limit']) && (meta['limit'] as number) >= 1 && (meta['limit'] as number) <= 100 &&
+    Number.isInteger(meta['total']) && (meta['total'] as number) >= 0 &&
+    Number.isInteger(meta['totalPages']) && (meta['totalPages'] as number) >= 0;
+}
+
+@Injectable()
+export class StaffDirectoryService {
+  private readonly context = inject(IAM_PORTAL_CONTEXT);
+
+  async unlock(member: Staff, reason: string, key: string): Promise<StaffUnlockResult> {
+    const trimmedReason = reason.trim();
+    if (!uuidPattern.test(member.id) || member.status !== 'LOCKED' ||
+        !Number.isInteger(member.version) || member.version < 1) return { kind: 'invalid-record' };
+    if (!trimmedReason || trimmedReason.length > 1000) return { kind: 'invalid' };
+    if (!uuidPattern.test(key)) return { kind: 'invalid-key' };
+    if (this.context.signal.aborted) return { kind: 'unavailable' };
+    try {
+      const result = await this.context.http.request({
+        method: 'POST', path: `/api/v1/auth/staff/${member.id}/unlocks`,
+        body: { reason: trimmedReason, expectedVersion: member.version },
+        headers: { 'Idempotency-Key': key }, signal: this.context.signal,
+      });
+      if (this.context.signal.aborted) return { kind: 'unavailable' };
+      if (!result.ok) {
+        return { kind: result.status === 400 ? 'invalid' :
+          result.status === 401 ? 'session-expired' :
+          result.status === 403 ? 'forbidden' :
+          result.status === 404 ? 'not-found' :
+          result.status === 409 ? 'conflict' : 'unavailable' };
+      }
+      if (result.status !== 200 || !isStaff(result.data) ||
+          result.data.id.toLowerCase() !== member.id.toLowerCase() ||
+          (result.data.status !== 'ACTIVE' && result.data.status !== 'PENDING_VERIFICATION') ||
+          result.data.version <= member.version) {
+        return { kind: 'unavailable' };
+      }
+      return { kind: 'unlocked', staff: result.data };
+    } catch {
+      return { kind: 'unavailable' };
+    }
+  }
+
+  async assignRoles(member: Staff, selected: readonly AssignableStaffRole[],
+    reason: string): Promise<StaffRolesResult> {
+    const rolesToAssign = [...selected];
+    const trimmedReason = reason.trim();
+    if (!uuidPattern.test(member.id) || member.roles.includes('ADMINISTRATOR') ||
+        !Number.isInteger(member.version) || member.version < 1 ||
+        rolesToAssign.length < 1 || rolesToAssign.length > ASSIGNABLE_STAFF_ROLES.length ||
+        new Set(rolesToAssign).size !== rolesToAssign.length ||
+        rolesToAssign.some((role) => !ASSIGNABLE_STAFF_ROLES.some((option) => option.value === role)) ||
+        (rolesToAssign.length === member.roles.length &&
+          rolesToAssign.every((role) => member.roles.includes(role))) ||
+        !trimmedReason || trimmedReason.length > 1000) return { kind: 'invalid' };
+    if (this.context.signal.aborted) return { kind: 'unavailable' };
+    try {
+      const result = await this.context.http.request({
+        method: 'PUT', path: `/api/v1/auth/staff/${member.id}/role-assignments`,
+        body: { roles: rolesToAssign, expectedVersion: member.version, reason: trimmedReason },
+        signal: this.context.signal,
+      });
+      if (this.context.signal.aborted) return { kind: 'unavailable' };
+      if (!result.ok) {
+        return { kind: result.status === 400 ? 'invalid' :
+          result.status === 401 ? 'session-expired' :
+          result.status === 403 ? 'forbidden' :
+          result.status === 404 ? 'not-found' :
+          result.status === 409 ? 'conflict' : 'unavailable' };
+      }
+      if (result.status !== 200 || !isStaff(result.data) ||
+          result.data.id.toLowerCase() !== member.id.toLowerCase() ||
+          result.data.version <= member.version ||
+          result.data.roles.length !== rolesToAssign.length ||
+          new Set(result.data.roles).size !== rolesToAssign.length ||
+          result.data.roles.some((role) => !rolesToAssign.includes(role as AssignableStaffRole))) {
+        return { kind: 'unavailable' };
+      }
+      return { kind: 'assigned', staff: result.data };
+    } catch {
+      return { kind: 'unavailable' };
+    }
+  }
+
+  async enable(member: Staff, reason: string, key: string): Promise<StaffEnableResult> {
+    const trimmedReason = reason.trim();
+    if (!uuidPattern.test(member.id) ||
+        !Number.isInteger(member.version) || member.version < 1 ||
+        !trimmedReason || trimmedReason.length > 1000 ||
+        !uuidPattern.test(key)) return { kind: 'invalid' };
+    if (this.context.signal.aborted) return { kind: 'unavailable' };
+    try {
+      const result = await this.context.http.request({
+        method: 'POST', path: `/api/v1/auth/staff/${member.id}/enablings`,
+        body: { reason: trimmedReason, expectedVersion: member.version },
+        headers: { 'Idempotency-Key': key }, signal: this.context.signal,
+      });
+      if (this.context.signal.aborted) return { kind: 'unavailable' };
+      if (!result.ok) {
+        return { kind: result.status === 400 ? 'invalid' :
+          result.status === 401 ? 'session-expired' :
+          result.status === 403 ? 'forbidden' :
+          result.status === 404 ? 'not-found' :
+          result.status === 409 ? 'conflict' : 'unavailable' };
+      }
+      if (result.status !== 200 || !isStaff(result.data) ||
+          result.data.id.toLowerCase() !== member.id.toLowerCase() ||
+          (result.data.status !== 'ACTIVE' && result.data.status !== 'PENDING_VERIFICATION') ||
+          result.data.version <= member.version) return { kind: 'unavailable' };
+      return { kind: 'enabled', staff: result.data };
+    } catch {
+      return { kind: 'unavailable' };
+    }
+  }
+
+  async disable(member: Staff, reason: string, key: string): Promise<StaffDisableResult> {
+    const trimmedReason = reason.trim();
+    if (!uuidPattern.test(member.id) ||
+        !Number.isInteger(member.version) || member.version < 1 ||
+        !trimmedReason || trimmedReason.length > 1000 ||
+        !uuidPattern.test(key)) return { kind: 'invalid' };
+    if (this.context.signal.aborted) return { kind: 'unavailable' };
+    try {
+      const result = await this.context.http.request({
+        method: 'POST', path: `/api/v1/auth/staff/${member.id}/disablings`,
+        body: { reason: trimmedReason, expectedVersion: member.version },
+        headers: { 'Idempotency-Key': key }, signal: this.context.signal,
+      });
+      if (this.context.signal.aborted) return { kind: 'unavailable' };
+      if (!result.ok) {
+        return { kind: result.status === 400 ? 'invalid' :
+          result.status === 401 ? 'session-expired' :
+          result.status === 403 ? 'forbidden' :
+          result.status === 404 ? 'not-found' :
+          result.status === 409 ? 'conflict' : 'unavailable' };
+      }
+      if (result.status !== 200 || !isStaff(result.data) ||
+          result.data.id.toLowerCase() !== member.id.toLowerCase() ||
+          result.data.status !== 'DISABLED' || result.data.version <= member.version) {
+        return { kind: 'unavailable' };
+      }
+      return { kind: 'disabled', staff: result.data };
+    } catch {
+      return { kind: 'unavailable' };
+    }
+  }
+
+  async updateName(id: string, name: string, expectedVersion: number): Promise<StaffUpdateResult> {
+    const trimmedName = name.trim();
+    if (!uuidPattern.test(id) || !trimmedName || trimmedName.length > 100 ||
+        !Number.isInteger(expectedVersion) || expectedVersion < 1) return { kind: 'invalid' };
+    if (this.context.signal.aborted) return { kind: 'unavailable' };
+    try {
+      const result = await this.context.http.request({
+        method: 'PATCH', path: `/api/v1/auth/staff/${id}`,
+        body: { name: trimmedName, expectedVersion }, signal: this.context.signal,
+      });
+      if (this.context.signal.aborted) return { kind: 'unavailable' };
+      if (!result.ok) {
+        return { kind: result.status === 400 ? 'invalid' :
+          result.status === 401 ? 'session-expired' :
+          result.status === 403 ? 'forbidden' :
+          result.status === 404 ? 'not-found' :
+          result.status === 409 ? 'conflict' : 'unavailable' };
+      }
+      if (result.status !== 200 || !isStaff(result.data) ||
+          result.data.id.toLowerCase() !== id.toLowerCase()) return { kind: 'unavailable' };
+      return { kind: 'updated', staff: result.data };
+    } catch {
+      return { kind: 'unavailable' };
+    }
+  }
+
+  async create(input: StaffCreateInput, key: string): Promise<StaffCreateResult> {
+    const name = input.name.trim();
+    const passwordBytes = new TextEncoder().encode(input.password).length;
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input.email) || input.email.length > 255 ||
+        !name || name.length > 100 ||
+        input.password.length < 8 || input.password.length > 72 || passwordBytes > 72 ||
+        !/[A-Z]/.test(input.password) || !/[0-9]/.test(input.password) ||
+        (input.role !== 'DENTIST' && input.role !== 'SECRETARY_ASSISTANT') ||
+        !uuidPattern.test(key)) return { kind: 'invalid' };
+    if (this.context.signal.aborted) return { kind: 'unavailable' };
+    try {
+      const result = await this.context.http.request({
+        method: 'POST', path: '/api/v1/auth/register', body: { ...input, name },
+        headers: { 'Idempotency-Key': key }, signal: this.context.signal,
+      });
+      if (this.context.signal.aborted) return { kind: 'unavailable' };
+      if (!result.ok) {
+        return { kind: result.status === 400 ? 'invalid' :
+          result.status === 401 ? 'session-expired' :
+          result.status === 403 ? 'forbidden' :
+          result.status === 409 ? 'conflict' : 'unavailable' };
+      }
+      if (result.status !== 201 || !isStaff(result.data) ||
+          result.data.status !== 'PENDING_VERIFICATION' ||
+          result.data.roles.length !== 1 || result.data.roles[0] !== input.role) {
+        return { kind: 'unavailable' };
+      }
+      return { kind: 'created', staff: result.data };
+    } catch {
+      return { kind: 'unavailable' };
+    }
+  }
+
+  async read(id: string): Promise<StaffReadResult> {
+    if (!uuidPattern.test(id) || this.context.signal.aborted) return { kind: 'unavailable' };
+    try {
+      const result = await this.context.http.request({
+        method: 'GET', path: `/api/v1/auth/staff/${id}`, signal: this.context.signal,
+      });
+      if (this.context.signal.aborted) return { kind: 'unavailable' };
+      if (!result.ok) {
+        return { kind: result.status === 401 ? 'session-expired' :
+          result.status === 403 ? 'forbidden' :
+          result.status === 404 ? 'not-found' : 'unavailable' };
+      }
+      if (result.status !== 200 || !isStaff(result.data) ||
+          result.data.id.toLowerCase() !== id.toLowerCase()) return { kind: 'unavailable' };
+      return { kind: 'loaded', staff: result.data };
+    } catch {
+      return { kind: 'unavailable' };
+    }
+  }
+
+  async list(page: number): Promise<StaffListResult> {
+    if (!Number.isInteger(page) || page < 1 || this.context.signal.aborted) {
+      return { kind: 'unavailable' };
+    }
+    try {
+      const result = await this.context.http.request({
+        method: 'GET',
+        path: '/api/v1/auth/staff',
+        query: { page: [String(page)], limit: [String(pageLimit)] },
+        signal: this.context.signal,
+      });
+      if (this.context.signal.aborted) return { kind: 'unavailable' };
+      if (!result.ok) {
+        return { kind: result.status === 401 ? 'session-expired' :
+          result.status === 403 ? 'forbidden' : 'unavailable' };
+      }
+      if (result.status !== 200 || !isStaffPage(result.data) || result.data.meta.page !== page) {
+        return { kind: 'unavailable' };
+      }
+      return { kind: 'loaded', page: result.data };
+    } catch {
+      return { kind: 'unavailable' };
+    }
+  }
+}

@@ -1,0 +1,117 @@
+:host {
+  box-sizing: border-box;
+  display: block;
+  width: 100%;
+  padding: 32px 36px 28px;
+  border: 1px solid rgba(226, 232, 238, .9);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, .96);
+  box-shadow: 0 8px 24px rgba(15, 23, 42, .14);
+  color: var(--iam-title, #1f2933);
+  font-family: Inter, system-ui, sans-serif;
+}
+
+form {
+  display: flex;
+  flex-direction: column;
+}
+
+h1 {
+  margin: 12px 0 6px;
+  color: var(--iam-primary, #20a99a);
+  font-size: 26px;
+  line-height: 1.25;
+  text-align: center;
+}
+
+.subtitle {
+  margin: 0 0 24px;
+  color: var(--iam-copy, #35616a);
+  font-size: 13px;
+  line-height: 1.5;
+  text-align: center;
+}
+
+label {
+  margin: 0 0 7px;
+  color: #0f766e;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+input {
+  box-sizing: border-box;
+  width: 100%;
+  height: 44px;
+  margin: 0 0 14px;
+  padding: 0 12px;
+  border: 1px solid var(--iam-border, #d6dee2);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--iam-title, #1f2933);
+  font: inherit;
+  font-size: 14px;
+}
+
+input::placeholder {
+  color: #94a3b8;
+}
+
+input:focus-visible,
+button:focus-visible {
+  outline: 2px solid var(--iam-focus, #1554a3);
+  outline-offset: 1px;
+}
+
+button[type="submit"] {
+  min-height: 44px;
+  margin-top: 4px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--iam-primary, #20a99a);
+  color: #fff;
+  cursor: pointer;
+  font: 600 14px Inter, system-ui, sans-serif;
+}
+
+button[type="submit"]:hover:not(:disabled) {
+  background: var(--iam-primary-hover, #168e82);
+}
+
+button[type="submit"]:disabled {
+  cursor: wait;
+  opacity: .65;
+}
+
+.text-link {
+  align-self: center;
+  min-height: 44px;
+  margin-top: 10px;
+  padding: 0 8px;
+  border: 0;
+  background: transparent;
+  color: #0f766e;
+  cursor: pointer;
+  font: 600 13px Inter, system-ui, sans-serif;
+}
+
+.text-link:hover {
+  text-decoration: underline;
+}
+
+[role="alert"] {
+  margin: 12px 0 0;
+  padding: 10px 12px;
+  border: 1px solid #f4c7cd;
+  border-radius: 6px;
+  background: #fff4f5;
+  color: #b02a37;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+@media (max-width: 480px) {
+  :host {
+    padding: 28px 24px 22px;
+  }
+}
