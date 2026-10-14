@@ -1,14 +1,15 @@
 :host {
-  display: block;
-  min-height: 100%;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
 }
 
 .iam-auth-surface {
   box-sizing: border-box;
   display: flex;
+  flex: 1;
   align-items: center;
   min-height: 480px;
-  height: 100%;
   padding: 48px clamp(32px, 8vw, 128px);
   background:
     linear-gradient(90deg, rgba(245, 252, 253, .2), transparent 65%),
