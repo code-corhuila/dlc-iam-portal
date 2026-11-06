@@ -55,8 +55,7 @@ export interface PortalContext {
   ) => void;
   readonly iamSession: {
     complete(input: {
-      readonly operationId: 'AuthLogin' | 'AuthVerifyMFAchallenge' |
-        'AuthConfirmMFAenrollment';
+      readonly operationId: 'AuthLogin';
       readonly body: unknown;
     }): Promise<
       | { readonly ok: true; readonly status: number; readonly data: unknown }
