@@ -5,6 +5,7 @@
   "scripts": {
     "check:skeleton": "node scripts/check-skeleton.mjs",
     "test": "ng test --watch=false",
+    "test:gateway": "node scripts/smoke-gateway.mjs",
     "build:portal": "ng run dlc-iam-portal:portal-module && node scripts/package-portal.mjs",
     "build": "npm run build:portal",
     "start": "ng serve"

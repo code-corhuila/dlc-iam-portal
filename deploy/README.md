@@ -20,6 +20,27 @@ underscores, and hyphens, starting with a letter or digit. `FRONT_NETWORK`
 defaults to `dlc-front_default`. The Docker service name is `iam-portal-demo`,
 its internal port is `80`, and it does not publish a host port.
 
-The `dlc-front` team can register the release and proxy `/portals/iam/` to
-`http://iam-portal-demo` on the shared network. Registration, route selection,
-and live Auth/Gateway verification are separate integration steps.
+The `dlc-front` registry must point to this exact release. Its `/portals/iam/`
+proxy reaches `http://iam-portal-demo` on the front network. The portal sends
+Auth requests only through the shell's `context.http` capability; login uses
+`context.iamSession.complete`. The browser uses the front origin for all of them.
+
+For the real stack, deploy `dlc-front` from its current `develop` with
+`GATEWAY_UPSTREAM=http://dlc-api-gateway:8080/api/v1`, the `platform` network,
+and an `AUTH_CONFIG_FILE` whose issuer and audience match `auth-service`.
+Deploy `dlc-api-gateway` and `auth-service` on `platform`, and set the Gateway's
+allowed origin to the browser origin of `dlc-front`. An older front image wired
+to `mock-gateway:4010` does not exercise this integration.
+
+From this repository, verify the deployed path without calling Auth directly:
+
+```sh
+FRONT_URL=http://localhost:8080 IAM_RELEASE=0.1.0-local npm run test:gateway
+```
+
+The smoke checks the portal module, registry release, real Auth configuration,
+public JWKS through the Gateway, and the Gateway's rejection of an
+unauthenticated sessions request. Auth must be
+running for the JWKS check. This check does not sign in a staff account or send
+email; exercise those separately with stage test accounts and the approved
+delivery configuration.
