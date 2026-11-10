@@ -62,22 +62,17 @@ describe('RecoverPasswordComponent', () => {
       .toBe(true);
   });
 
-  it('offers the reset route without placing a proof in the URL', async () => {
-    const { fixture, host } = await render(vi.fn().mockReturnValue(of(void 0)));
+  it('no longer offers email verification', async () => {
+    const { host } = await render(vi.fn());
+    expect(host.textContent).not.toContain('Activar mi cuenta');
+  });
+
+  it('offers navigation to password reset', async () => {
+    const { fixture, host } = await render(vi.fn());
     const reset = vi.fn();
     fixture.componentInstance.resetPassword.subscribe(reset);
     [...host.querySelectorAll<HTMLButtonElement>('.text-link')]
-      .find((button) => button.textContent?.includes('código de recuperación'))?.click();
+      .find((button) => button.textContent?.includes('Crea tu nueva contraseña'))?.click();
     expect(reset).toHaveBeenCalledOnce();
-  });
-
-  it('offers navigation to email verification', async () => {
-    const { fixture, host } = await render(vi.fn().mockReturnValue(of(void 0)));
-    const navigate = vi.fn();
-    fixture.componentInstance.verifyEmail.subscribe(navigate);
-    const button = [...host.querySelectorAll<HTMLButtonElement>('.text-link')]
-      .find((item) => item.textContent?.includes('código de verificación'));
-    button?.click();
-    expect(navigate).toHaveBeenCalledTimes(1);
   });
 });
