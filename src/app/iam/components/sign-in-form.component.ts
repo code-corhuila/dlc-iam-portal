@@ -39,6 +39,9 @@ import { IamApiService } from '../data/iam-api.service';
         <button type="button" class="text-link" (click)="recoverPassword.emit()">
           ¿Olvidaste tu contraseña?
         </button>
+        <button type="button" class="text-link secondary-link" (click)="verifyEmail.emit()">
+          Activar mi cuenta con el código del correo
+        </button>
       }
 
       @if (errorMessage) {
@@ -53,6 +56,7 @@ export class SignInFormComponent {
 
   @Output() readonly authenticated = new EventEmitter<void>();
   @Output() readonly recoverPassword = new EventEmitter<void>();
+  @Output() readonly verifyEmail = new EventEmitter<void>();
   @Input() showRecoveryLink = false;
 
   email = '';

@@ -17,9 +17,9 @@ import { IamApiService } from '../data/iam-api.service';
       </span>
       <h1>Recuperar contraseña</h1>
       @if (submitted) {
-        <p role="status">Si la cuenta existe, recibirás instrucciones en tu correo.</p>
+        <p role="status">Si la cuenta existe, recibirás un código de recuperación en tu correo.</p>
       } @else {
-        <p>Ingresa el correo de tu cuenta de personal para recibir instrucciones.</p>
+        <p>Ingresa el correo de tu cuenta de personal para recibir un código de recuperación.</p>
         <form (submit)="submit($event)">
           <label for="iam-recovery-email">Correo electrónico</label>
           <div class="recovery-email-field">
@@ -39,18 +39,15 @@ import { IamApiService } from '../data/iam-api.service';
               required
             />
           </div>
-          <button type="submit" [disabled]="loading">Enviar instrucciones</button>
+          <button type="submit" [disabled]="loading">Enviar código</button>
           @if (errorMessage) {
             <p role="alert">{{ errorMessage }}</p>
           }
         </form>
       }
       <div class="recovery-code-links">
-        <button type="button" class="text-link" (click)="verifyEmail.emit()">
-          Ya tengo un código de verificación
-        </button>
         <button type="button" class="text-link" (click)="resetPassword.emit()">
-          Ya tengo un código de recuperación
+          ¿Recibiste el código? Crea tu nueva contraseña
         </button>
       </div>
       <button type="button" class="text-link back-link" (click)="backToLogin.emit()">
@@ -65,7 +62,6 @@ export class RecoverPasswordComponent {
 
   @Output() readonly backToLogin = new EventEmitter<void>();
   @Output() readonly resetPassword = new EventEmitter<void>();
-  @Output() readonly verifyEmail = new EventEmitter<void>();
   email = '';
   loading = false;
   submitted = false;
