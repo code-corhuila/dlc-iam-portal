@@ -57,15 +57,9 @@ describe('IAM portal entry', () => {
     recoveryLink.click();
     expect(context.navigation.request).toHaveBeenCalledWith({ path: '/recover-password' });
 
-    await handle.updateRoute({
-      ...route,
-      globalPath: '/recover-password',
-      basePath: '/recover-password',
-    });
-    expect(host.querySelector('dlc-recover-password')).not.toBeNull();
     const verifyButton = [...host.querySelectorAll<HTMLButtonElement>(
-      'dlc-recover-password .text-link',
-    )].find((button) => button.textContent?.includes('código de verificación'));
+      'dlc-sign-in-form .text-link',
+    )].find((button) => button.textContent?.includes('Activar mi cuenta'));
     if (!verifyButton) throw new Error('Email verification link is missing');
     verifyButton.click();
     expect(context.navigation.request).toHaveBeenCalledWith({
@@ -87,7 +81,7 @@ describe('IAM portal entry', () => {
     expect(context.navigation.request).toHaveBeenCalledWith({ path: '/login' });
 
     const resetButton = [...host.querySelectorAll<HTMLButtonElement>('dlc-recover-password .text-link')]
-      .find((button) => button.textContent?.includes('código de recuperación'));
+      .find((button) => button.textContent?.includes('Crea tu nueva contraseña'));
     resetButton?.click();
     expect(context.navigation.request).toHaveBeenCalledWith({ path: '/recover-password/reset' });
     await handle.updateRoute({

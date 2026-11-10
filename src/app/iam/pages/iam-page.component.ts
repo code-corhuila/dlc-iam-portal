@@ -18,6 +18,7 @@ import { SignInFormComponent } from '../components/sign-in-form.component';
           [showRecoveryLink]="showRecoveryLink"
           (authenticated)="authenticated.set(true)"
           (recoverPassword)="recoverPassword.emit()"
+          (verifyEmail)="verifyEmail.emit()"
         />
       }
     </section>
@@ -26,5 +27,6 @@ import { SignInFormComponent } from '../components/sign-in-form.component';
 export class IamPageComponent {
   @Input() showRecoveryLink = false;
   @Output() readonly recoverPassword = new EventEmitter<void>();
+  @Output() readonly verifyEmail = new EventEmitter<void>();
   readonly authenticated = signal(false);
 }

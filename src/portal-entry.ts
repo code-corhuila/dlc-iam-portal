@@ -35,11 +35,11 @@ const ownedBases = new Set([
   styleUrl: './app/iam/pages/iam-page.component.css',
   template: `
     @if (route().basePath === '/login' && route().localPath === '/') {
-      <dlc-iam-page [showRecoveryLink]="true" (recoverPassword)="requestRoute('/recover-password')" />
+      <dlc-iam-page [showRecoveryLink]="true" (recoverPassword)="requestRoute('/recover-password')"
+        (verifyEmail)="requestRoute('/recover-password/verify-email')" />
     } @else if (route().basePath === '/recover-password' && route().localPath === '/') {
       <section class="iam-auth-surface" aria-label="Recuperación de contraseña">
         <dlc-recover-password (backToLogin)="requestRoute('/login')"
-          (verifyEmail)="requestRoute('/recover-password/verify-email')"
           (resetPassword)="requestRoute('/recover-password/reset')" />
       </section>
     } @else if (route().basePath === '/recover-password' && route().localPath === '/verify-email') {
