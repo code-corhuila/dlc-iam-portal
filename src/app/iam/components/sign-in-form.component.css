@@ -95,6 +95,12 @@ button[type="submit"]:disabled {
   font: 600 13px Inter, system-ui, sans-serif;
 }
 
+.secondary-link {
+  margin-top: 0;
+  color: var(--iam-copy, #35616a);
+  font-weight: 500;
+}
+
 .text-link:hover {
   text-decoration: underline;
 }

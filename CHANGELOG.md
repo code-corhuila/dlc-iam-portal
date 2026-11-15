@@ -2,6 +2,16 @@
 
 Notable changes to `dlc-iam-portal` are recorded here.
 
+## [3.0.0] - 2026-11-14
+
+### Changed
+
+- Moved the "Ya tengo un código de verificación" account activation link to the login screen and clarified the code wording, including the "Enviar código" action in recovery.
+
+### Added
+
+- Verification of portal requests through the Front and the Gateway.
+
 ## [2.0.0] - 2026-10-13
 
 ### Added
